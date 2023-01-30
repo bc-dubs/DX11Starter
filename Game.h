@@ -21,6 +21,12 @@ public:
 	void OnResize();
 	void Update(float deltaTime, float totalTime);
 	void Draw(float deltaTime, float totalTime);
+	/// <summary>
+	/// Function called in Update() that handles ImGui
+	/// </summary>
+	/// <param name="deltaTime"></param>
+	/// <param name="totalTime"></param>
+	void UpdateImGui(float deltaTime, float totalTime);
 
 private:
 
@@ -36,6 +42,7 @@ private:
 	// Buffers to hold actual geometry data
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> vsConstantBuffer;
 	
 	// Shaders and shader-related constructs
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
@@ -44,6 +51,8 @@ private:
 
 	// A list of objects to draw on-screen
 	std::vector<Mesh> meshes;
-
+	DirectX::XMFLOAT4 colorTint;
+	DirectX::XMFLOAT3 offset;
+	
 };
 
