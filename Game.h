@@ -1,7 +1,7 @@
 #pragma once
 
 #include "DXCore.h"
-#include "Mesh.h"
+#include "Entity.h"
 #include <memory>
 #include <DirectXMath.h>
 #include <wrl/client.h> // Used for ComPtr - a smart pointer for COM objects
@@ -50,9 +50,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
 
 	// A list of objects to draw on-screen
-	std::vector<Mesh> meshes;
+	std::vector<Entity> entities;
 	DirectX::XMFLOAT4 colorTint;
-	DirectX::XMFLOAT3 offset;
 	
 };
 

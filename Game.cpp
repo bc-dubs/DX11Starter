@@ -14,6 +14,7 @@
 
 // For the DirectX Math library
 using namespace DirectX;
+using namespace std;
 
 // --------------------------------------------------------
 // Constructor
@@ -39,7 +40,6 @@ Game::Game(HINSTANCE hInstance)
 #endif
 
 	colorTint = XMFLOAT4(0.1f, 1.0f, 0.5f, 1.0f);
-	offset = XMFLOAT3(0.25f, 0.0f, 0.0f);
 }
 
 // --------------------------------------------------------
@@ -233,22 +233,37 @@ void Game::CreateGeometry()
 	// Creating heart variables
 	Vertex heartVertices[] =
 	{
-		{ XMFLOAT3(+0.3f, +0.5f, +0.0f), red },
-		{ XMFLOAT3(+0.6f, +0.5f, +0.0f), red },
-		{ XMFLOAT3(+0.45f, +0.35f, +0.0f), red },
-		{ XMFLOAT3(+0.4f, +0.5f, +0.0f), red },
-		{ XMFLOAT3(+0.5f, +0.6f, +0.0f), red },
-		{ XMFLOAT3(+0.45f, +0.55f, +0.0f), red },
-		{ XMFLOAT3(+0.4f, +0.6f, +0.0f), red },
+		{ XMFLOAT3(+0.3f - 0.45f, +0.5f - 0.45f, +0.0f), red},
+		{ XMFLOAT3(+0.6f - 0.45f, +0.5f - 0.45f, +0.0f), red },
+		{ XMFLOAT3(+0.45f - 0.45f, +0.35f - 0.45f, +0.0f), red },
+		{ XMFLOAT3(+0.4f - 0.45f, +0.5f - 0.45f, +0.0f), red },
+		{ XMFLOAT3(+0.5f - 0.45f, +0.6f - 0.45f, +0.0f), red },
+		{ XMFLOAT3(+0.45f - 0.45f, +0.55f - 0.45f, +0.0f), red },
+		{ XMFLOAT3(+0.4f - 0.45f, +0.6f - 0.45f, +0.0f), red },
 	};
 
 	unsigned int heartIndices[] = { 0, 1, 2, 1, 3, 4, 3, 6, 5, 0, 6, 3 };
 
-	// Creating and populating the actual vector of mesh objects
-	meshes = std::vector<Mesh>();
-	meshes.push_back(Mesh(triangleVertices, 3, triangleIndices, 3, device, context));
-	meshes.push_back(Mesh(sierpinskiVertices, 6, sierpinskiIndices, 9, device, context));
-	meshes.push_back(Mesh(heartVertices, 7, heartIndices, 12, device, context));
+	// Creating pointers to each mesh object
+	
+	shared_ptr<Mesh> triangleMesh = make_shared<Mesh>(Mesh(triangleVertices, 3, triangleIndices, 3, device, context));
+	shared_ptr<Mesh> sierpinskiMesh = make_shared<Mesh>(Mesh(sierpinskiVertices, 6, sierpinskiIndices, 9, device, context));
+	shared_ptr<Mesh> heartMesh = make_shared<Mesh>(Mesh(heartVertices, 7, heartIndices, 12, device, context));
+
+	entities = std::vector<Entity>();
+	entities.push_back(Entity(triangleMesh));
+	entities.push_back(Entity(triangleMesh));
+	entities.push_back(Entity(heartMesh));
+	entities.push_back(Entity(heartMesh));
+	entities.push_back(Entity(heartMesh));
+
+	entities[0].GetTransform()->MoveBy(-0.125, 0, 0);
+	entities[0].GetTransform()->ScaleBy(0.5, 0.5, 0.5);
+	entities[1].GetTransform()->MoveBy(0, 0.2, 0);
+	entities[1].GetTransform()->ScaleBy(0.5, 0.5, 0.5);
+	entities[2].GetTransform()->MoveBy(0.45, 0.45, 0);
+	entities[3].GetTransform()->MoveBy(-0.45, -0.45, 0);
+	entities[4].GetTransform()->MoveBy(-0.45, 0.45, 0);
 }
 
 
@@ -269,6 +284,13 @@ void Game::OnResize()
 void Game::Update(float deltaTime, float totalTime)
 {
 	UpdateImGui(deltaTime, totalTime);
+
+	entities[0].GetTransform()->MoveBy(deltaTime * 0.25f * sin(totalTime), deltaTime * 0.25f * cos(totalTime), 0);
+	entities[1].GetTransform()->RotateBy(0, 0, deltaTime);
+	//entities[2].GetTransform()->ScaleBy(1.1 - sin(totalTime), 1.1 - sin(totalTime), 1.1 - sin(totalTime));
+	entities[2].GetTransform()->ScaleBy(1 + deltaTime * 0.25f * sin(totalTime), 1, 1);
+	entities[3].GetTransform()->RotateBy(0, 0, deltaTime);
+	entities[4].GetTransform()->RotateBy(0, 0, -deltaTime);
 
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::GetInstance().KeyDown(VK_ESCAPE))
@@ -292,10 +314,10 @@ void Game::Draw(float deltaTime, float totalTime)
 		context->ClearDepthStencilView(depthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
 
-	{
+	for (int i = 0; i < entities.size(); i++) {
 		VertexShaderExternalData vsData;
 		vsData.colorTint = colorTint;
-		vsData.offset = offset;
+		vsData.worldMatrix = entities[i].GetTransform()->GetWorldMatrix();
 
 		D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
 		context->Map(vsConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer);
@@ -306,11 +328,8 @@ void Game::Draw(float deltaTime, float totalTime)
 			0, // Which slot (register) to bind the buffer to?
 			1, // How many are we activating? Can do multiple at once
 			vsConstantBuffer.GetAddressOf()); // Array of buffers (or the address of one)
-	}
 
-	// Loops through each mesh in the game and tells it to draw itself
-	for(int i = 0; i < meshes.size(); i++) {
-		meshes[i].Draw();
+		entities[i].GetMesh()->Draw();
 	}
 	
 
@@ -359,8 +378,25 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 	ImGui::Text("The current framerate is %f", ImGui::GetIO().Framerate);
 	ImGui::Text("The game window is %i pixels wide and %i pixels high", windowWidth, windowHeight);
 	ImGui::ColorEdit4("Geometry tint", &colorTint.x);
-	ImGui::DragFloat3("Viewing offset", &offset.x, 0.1f, -1.0f, 1.0f);
-	//printf("The window width is " + windowWidth);
+
+	// Entity GUI
+	if (ImGui::CollapsingHeader("Entities")) {
+		for (int i = 0; i < entities.size(); i++) {
+			if (ImGui::TreeNode((void*)(intptr_t)i, "Entity %i", i)) {
+
+				XMFLOAT3 pos = entities[i].GetTransform()->GetPosition();
+				XMFLOAT4 rot = entities[i].GetTransform()->GetRotation(); // All I could think to do is just display quaternion data, though I know that's not super intuitive
+				XMFLOAT3 sc = entities[i].GetTransform()->GetScale();
+
+				ImGui::DragFloat3("Position", &pos.x); // I also couldn't figure out how to make these editable
+				ImGui::DragFloat4("Rotation", &rot.x);
+				ImGui::DragFloat3("Scale", &sc.x);
+				ImGui::Text("Tris: %i", entities[i].GetMesh()->GetIndexCount() / 3);
+				
+				ImGui::TreePop();
+			}
+		}
+	}
 
 	ImGui::End();
 }
