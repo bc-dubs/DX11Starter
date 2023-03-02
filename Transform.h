@@ -15,11 +15,16 @@ public:
 	~Transform();
 
 	// Getters
-	DirectX::XMFLOAT3 GetPosition();
-	DirectX::XMFLOAT4 GetRotation();
-	DirectX::XMFLOAT3 GetScale();
+	DirectX::XMFLOAT3* GetPosition();
+	DirectX::XMFLOAT4* GetRotation();
+	DirectX::XMFLOAT3* GetScale();
 	DirectX::XMFLOAT4X4 GetWorldMatrix();
 	DirectX::XMFLOAT4X4 GetWorldInverseTransposeMatrix();
+	DirectX::XMFLOAT3* GetRight();
+	DirectX::XMFLOAT3* GetUp();
+	DirectX::XMFLOAT3* GetForward();
+
+
 
 	// Setters
 	void SetPosition(DirectX::XMFLOAT3 newPos);
@@ -33,6 +38,8 @@ public:
 	// Mutators
 	void MoveBy(DirectX::XMFLOAT3 offset);
 	void MoveBy(float x, float y, float z);
+	void LocalMoveBy(DirectX::XMFLOAT3 offset); // Moves relative to this transform's rotation
+	void LocalMoveBy(float x, float y, float z);
 	void RotateBy(DirectX::XMFLOAT4 quaternion);
 	void RotateBy(DirectX::XMFLOAT3 pitchYawRoll);
 	void RotateBy(float pitch, float yaw, float roll);
@@ -43,13 +50,20 @@ private:
 	DirectX::XMFLOAT3 position;
 	DirectX::XMFLOAT4 rotation;
 	DirectX::XMFLOAT3 scale;
+	DirectX::XMFLOAT3 right;
+	DirectX::XMFLOAT3 up;
+	DirectX::XMFLOAT3 forward;
+
 
 	DirectX::XMFLOAT4X4 worldMatrix;
 	DirectX::XMFLOAT4X4 worldInverseTransposeMatrix;
 
 	// Has the transform changed since the matrix was last calculated?
 	bool transformAltered;
+	// Has the transform changed since the matrix was last calculated?
+	bool rotationAltered;
 
 	void UpdateMatrices();
+	void UpdateRotation();
 };
 

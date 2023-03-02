@@ -2,6 +2,7 @@
 
 #include "DXCore.h"
 #include "Entity.h"
+#include "Camera.h"
 #include <memory>
 #include <DirectXMath.h>
 #include <wrl/client.h> // Used for ComPtr - a smart pointer for COM objects
@@ -53,5 +54,8 @@ private:
 	std::vector<Entity> entities;
 	DirectX::XMFLOAT4 colorTint;
 	
+	// A list of cameras
+	std::vector<std::shared_ptr<Camera>> cameras;
+	int cameraIndex;
 };
 

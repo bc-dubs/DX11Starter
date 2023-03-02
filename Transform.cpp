@@ -15,6 +15,7 @@ Transform::Transform(DirectX::XMFLOAT3 position, DirectX::XMFLOAT4 rotation, Dir
     transformAltered = true;
     XMStoreFloat4x4(&worldMatrix, XMMatrixIdentity());
     XMStoreFloat4x4(&worldInverseTransposeMatrix, XMMatrixIdentity());
+    UpdateRotation();
 }
 
 Transform::Transform(DirectX::XMFLOAT3 position, DirectX::XMFLOAT3 pitchYawRoll, DirectX::XMFLOAT3 scale)
@@ -30,19 +31,19 @@ Transform::~Transform()
 
 
 #pragma region === GETTERS ===
-DirectX::XMFLOAT3 Transform::GetPosition()
+DirectX::XMFLOAT3* Transform::GetPosition()
 {
-    return position;
+    return &position;
 }
 
-DirectX::XMFLOAT4 Transform::GetRotation()
+DirectX::XMFLOAT4* Transform::GetRotation()
 {
-    return rotation;
+    return &rotation;
 }
 
-DirectX::XMFLOAT3 Transform::GetScale()
+DirectX::XMFLOAT3* Transform::GetScale()
 {
-    return scale;
+    return &scale;
 }
 
 DirectX::XMFLOAT4X4 Transform::GetWorldMatrix()
@@ -59,6 +60,27 @@ DirectX::XMFLOAT4X4 Transform::GetWorldInverseTransposeMatrix()
         UpdateMatrices();
 
     return worldInverseTransposeMatrix;
+}
+DirectX::XMFLOAT3* Transform::GetRight()
+{
+    if (rotationAltered)
+        UpdateRotation();
+
+    return &right;
+}
+DirectX::XMFLOAT3* Transform::GetUp()
+{
+    if (rotationAltered)
+        UpdateRotation();
+
+    return &up;
+}
+DirectX::XMFLOAT3* Transform::GetForward()
+{
+    if (rotationAltered)
+        UpdateRotation();
+
+    return &forward;
 }
 #pragma endregion
 
@@ -81,18 +103,21 @@ void Transform::SetRotation(DirectX::XMFLOAT3 newPitchYawRoll)
 {
     XMStoreFloat4(&rotation, XMQuaternionRotationRollPitchYawFromVector(XMLoadFloat3(&newPitchYawRoll)));
     transformAltered = true;
+    rotationAltered = true;
 }
 
 void Transform::SetRotation(float pitch, float yaw, float roll)
 {
     XMStoreFloat4(&rotation, XMQuaternionRotationRollPitchYaw(pitch, yaw, roll));
     transformAltered = true;
+    rotationAltered = true;
 }
 
 void Transform::SetRotation(DirectX::XMFLOAT4 newQuaternion)
 {
     rotation = newQuaternion;
     transformAltered = true;
+    rotationAltered = true;
 }
 
 void Transform::SetScale(DirectX::XMFLOAT3 newScale)
@@ -123,22 +148,37 @@ void Transform::MoveBy(float x, float y, float z)
     transformAltered = true;
 }
 
+void Transform::LocalMoveBy(DirectX::XMFLOAT3 offset)
+{
+    XMStoreFloat3(&position, XMVectorAdd(XMLoadFloat3(&position), XMVector3Rotate(XMLoadFloat3(&offset), XMLoadFloat4(&rotation))));
+    transformAltered = true;
+}
+
+void Transform::LocalMoveBy(float x, float y, float z)
+{
+    XMStoreFloat3(&position, XMVectorAdd(XMLoadFloat3(&position), XMVector3Rotate(XMVectorSet(x, y, z, 0), XMLoadFloat4(&rotation))));
+    transformAltered = true;
+}
+
 void Transform::RotateBy(DirectX::XMFLOAT4 quaternion)
 {
     XMStoreFloat4(&rotation, XMQuaternionMultiply(XMLoadFloat4(&rotation), XMLoadFloat4(&quaternion)));
     transformAltered = true;
+    rotationAltered = true;
 }
 
 void Transform::RotateBy(DirectX::XMFLOAT3 pitchYawRoll)
 {
     XMStoreFloat4(&rotation, XMQuaternionMultiply(XMLoadFloat4(&rotation), XMQuaternionRotationRollPitchYawFromVector(XMLoadFloat3(&pitchYawRoll))));
     transformAltered = true;
+    rotationAltered = true;
 }
 
 void Transform::RotateBy(float pitch, float yaw, float roll)
 {
     XMStoreFloat4(&rotation, XMQuaternionMultiply(XMLoadFloat4(&rotation), XMQuaternionRotationRollPitchYaw(pitch, yaw, roll)));
     transformAltered = true;
+    rotationAltered = true;
 
 }
 
@@ -169,4 +209,14 @@ void Transform::UpdateMatrices()
     XMStoreFloat4x4(&worldInverseTransposeMatrix, XMMatrixInverse(0, XMMatrixTranspose(world)));
 
     transformAltered = false;
+}
+
+void Transform::UpdateRotation()
+{
+    XMStoreFloat3(&right, XMVector3Normalize(XMVector3Rotate(XMVectorSet(1, 0, 0, 0), XMLoadFloat4(&rotation))));
+    XMStoreFloat3(&up, XMVector3Normalize(XMVector3Rotate(XMVectorSet(0, 1, 0, 0), XMLoadFloat4(&rotation))));
+    XMStoreFloat3(&forward, XMVector3Normalize(XMVector3Rotate(XMVectorSet(0, 0, 1, 0), XMLoadFloat4(&rotation))));
+
+
+    rotationAltered = false;
 }

@@ -38,7 +38,7 @@ Game::Game(HINSTANCE hInstance)
 	CreateConsoleWindow(500, 120, 32, 120);
 	printf("Console window created successfully.  Feel free to printf() here.\n");
 #endif
-
+	cameraIndex = 0;
 	colorTint = XMFLOAT4(0.1f, 1.0f, 0.5f, 1.0f);
 }
 
@@ -109,6 +109,13 @@ void Game::Init()
 		cbDesc.Usage = D3D11_USAGE_DYNAMIC;
 
 		device->CreateBuffer(&cbDesc, 0, vsConstantBuffer.GetAddressOf());
+	}
+
+	{
+		// Create camera(s)
+		cameras = vector<shared_ptr<Camera>>();
+		cameras.push_back(std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, -10))));
+		cameras.push_back(std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, 10), XMFLOAT4(1, 0, 0, 0), XM_PIDIV4, 5, 0.001, 0.01, 50, false, XMFLOAT3(0.4, 0.6, 0))));
 	}
 
 	// Initialize ImGui itself & platform/renderer backends
@@ -257,13 +264,13 @@ void Game::CreateGeometry()
 	entities.push_back(Entity(heartMesh));
 	entities.push_back(Entity(heartMesh));
 
-	entities[0].GetTransform()->MoveBy(-0.125, 0, 0);
-	entities[0].GetTransform()->ScaleBy(0.5, 0.5, 0.5);
-	entities[1].GetTransform()->MoveBy(0, 0.2, 0);
-	entities[1].GetTransform()->ScaleBy(0.5, 0.5, 0.5);
-	entities[2].GetTransform()->MoveBy(0.45, 0.45, 0);
-	entities[3].GetTransform()->MoveBy(-0.45, -0.45, 0);
-	entities[4].GetTransform()->MoveBy(-0.45, 0.45, 0);
+	entities[0].GetTransform()->MoveBy(-0.125f, 0.0f, 0.0f);
+	entities[0].GetTransform()->ScaleBy(0.5f, 0.5f, 0.5f);
+	entities[1].GetTransform()->MoveBy(0.0f, 0.2f, 0.0f);
+	entities[1].GetTransform()->ScaleBy(10.0f, 10.0f, 10.0f);
+	entities[2].GetTransform()->MoveBy(0.45f, 0.45f, 0.0f);
+	entities[3].GetTransform()->MoveBy(-0.45f, -0.45f, 0.0f);
+	entities[4].GetTransform()->MoveBy(-0.45f, 0.45f, 0.0f);
 }
 
 
@@ -276,6 +283,10 @@ void Game::OnResize()
 {
 	// Handle base-level DX resize stuff
 	DXCore::OnResize();
+	// Update the cameras' aspect ratios
+	for (unsigned int i = 0; i < cameras.size(); i++) {
+		cameras[i]->UpdateProjectionMatrix((float)this->windowWidth / this->windowHeight);
+	}
 }
 
 // --------------------------------------------------------
@@ -285,12 +296,14 @@ void Game::Update(float deltaTime, float totalTime)
 {
 	UpdateImGui(deltaTime, totalTime);
 
-	entities[0].GetTransform()->MoveBy(deltaTime * 0.25f * sin(totalTime), deltaTime * 0.25f * cos(totalTime), 0);
-	entities[1].GetTransform()->RotateBy(0, 0, deltaTime);
+	entities[0].GetTransform()->MoveBy(deltaTime * 0.25f * (float) sin(totalTime), deltaTime * 0.25f * (float) cos(totalTime), 0.0f);
+	entities[1].GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
 	//entities[2].GetTransform()->ScaleBy(1.1 - sin(totalTime), 1.1 - sin(totalTime), 1.1 - sin(totalTime));
-	entities[2].GetTransform()->ScaleBy(1 + deltaTime * 0.25f * sin(totalTime), 1, 1);
-	entities[3].GetTransform()->RotateBy(0, 0, deltaTime);
-	entities[4].GetTransform()->RotateBy(0, 0, -deltaTime);
+	entities[2].GetTransform()->ScaleBy(1 + deltaTime * 0.25f * (float) sin(totalTime), 1.0f, 1.0f);
+	entities[3].GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
+	entities[4].GetTransform()->RotateBy(0.0f, 0.0f, -deltaTime);
+
+	cameras[cameraIndex]->Update(deltaTime);
 
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::GetInstance().KeyDown(VK_ESCAPE))
@@ -314,10 +327,13 @@ void Game::Draw(float deltaTime, float totalTime)
 		context->ClearDepthStencilView(depthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
 
-	for (int i = 0; i < entities.size(); i++) {
+	for (unsigned int i = 0; i < entities.size(); i++) {
 		VertexShaderExternalData vsData;
 		vsData.colorTint = colorTint;
 		vsData.worldMatrix = entities[i].GetTransform()->GetWorldMatrix();
+		vsData.viewMatrix = cameras[cameraIndex]->GetViewMatrix();
+		vsData.projectionMatrix = cameras[cameraIndex]->GetProjectionMatrix();
+
 
 		D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
 		context->Map(vsConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer);
@@ -379,14 +395,25 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 	ImGui::Text("The game window is %i pixels wide and %i pixels high", windowWidth, windowHeight);
 	ImGui::ColorEdit4("Geometry tint", &colorTint.x);
 
+	// Camera GUI
+	if (ImGui::CollapsingHeader("Cameras")) {
+		for (unsigned int i = 0; i < cameras.size(); i++) {
+			char radioLabel[] = { 'C', 'a', 'm', 'e', 'r', 'a', ' ', (i+65), '\0'};
+			ImGui::RadioButton(radioLabel, &cameraIndex, i); ImGui::SameLine();
+			XMFLOAT3 pos = *cameras[i]->GetTransform()->GetPosition();
+			char posLabel[] = { 'P', 'o', 's', 'i', 't', 'i', 'o', 'n', ' ', (i + 65), '\0' };
+			ImGui::DragFloat3(posLabel, &pos.x);
+		}
+	}
+
 	// Entity GUI
 	if (ImGui::CollapsingHeader("Entities")) {
-		for (int i = 0; i < entities.size(); i++) {
+		for (unsigned int i = 0; i < entities.size(); i++) {
 			if (ImGui::TreeNode((void*)(intptr_t)i, "Entity %i", i)) {
 
-				XMFLOAT3 pos = entities[i].GetTransform()->GetPosition();
-				XMFLOAT4 rot = entities[i].GetTransform()->GetRotation(); // All I could think to do is just display quaternion data, though I know that's not super intuitive
-				XMFLOAT3 sc = entities[i].GetTransform()->GetScale();
+				XMFLOAT3 pos = *entities[i].GetTransform()->GetPosition();
+				XMFLOAT4 rot = *entities[i].GetTransform()->GetRotation(); // All I could think to do is just display quaternion data, though I know that's not super intuitive
+				XMFLOAT3 sc = *entities[i].GetTransform()->GetScale();
 
 				ImGui::DragFloat3("Position", &pos.x); // I also couldn't figure out how to make these editable
 				ImGui::DragFloat4("Rotation", &rot.x);
