@@ -148,61 +148,23 @@ void Game::CreateGeometry()
 	std::shared_ptr<Material> goldMaterial = std::make_shared<Material>(gold, vertexShader, pixelShader);
 
 
-
-	// Creating triangle variables
-	Vertex triangleVertices[] =
-	{
-		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), red },
-		{ XMFLOAT3(+0.5f, -0.5f, +0.0f), blue },
-		{ XMFLOAT3(-0.5f, -0.5f, +0.0f), green },
-	};
-
-	unsigned int triangleIndices[] = { 0, 1, 2 };
-
-	// Creating Sierpinski triangle/triforce variables
-	Vertex sierpinskiVertices[] =
-	{
-		{ XMFLOAT3(-0.3f, +0.0f, +0.0f), gold },
-		{ XMFLOAT3(-0.6f, +0.0f, +0.0f), gold },
-		{ XMFLOAT3(-0.45f, +0.26f, +0.0f), gold },
-		{ XMFLOAT3(-0.9f, +0.0f, +0.0f), gold },
-		{ XMFLOAT3(-0.75f, +0.26f, +0.0f), gold },
-		{ XMFLOAT3(-0.6f, +0.52f, +0.0f), gold },
-	};
-
-	unsigned int sierpinskiIndices[] = { 0, 1, 2, 1, 3, 4, 2, 4, 5 };
-
-	// Creating heart variables
-	Vertex heartVertices[] =
-	{
-		{ XMFLOAT3(+0.3f - 0.45f, +0.5f - 0.45f, +0.0f), red},
-		{ XMFLOAT3(+0.6f - 0.45f, +0.5f - 0.45f, +0.0f), red },
-		{ XMFLOAT3(+0.45f - 0.45f, +0.35f - 0.45f, +0.0f), red },
-		{ XMFLOAT3(+0.4f - 0.45f, +0.5f - 0.45f, +0.0f), red },
-		{ XMFLOAT3(+0.5f - 0.45f, +0.6f - 0.45f, +0.0f), red },
-		{ XMFLOAT3(+0.45f - 0.45f, +0.55f - 0.45f, +0.0f), red },
-		{ XMFLOAT3(+0.4f - 0.45f, +0.6f - 0.45f, +0.0f), red },
-	};
-
-	unsigned int heartIndices[] = { 0, 1, 2, 1, 3, 4, 3, 6, 5, 0, 6, 3 };
-
 	// Creating pointers to each mesh object
 	
-	shared_ptr<Mesh> triangleMesh = make_shared<Mesh>(Mesh(triangleVertices, 3, triangleIndices, 3, device, context));
-	shared_ptr<Mesh> sierpinskiMesh = make_shared<Mesh>(Mesh(sierpinskiVertices, 6, sierpinskiIndices, 9, device, context));
-	shared_ptr<Mesh> heartMesh = make_shared<Mesh>(Mesh(heartVertices, 7, heartIndices, 12, device, context));
+	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\cube.obj").c_str(), device, context);
+	shared_ptr<Mesh> sphereMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\sphere.obj").c_str(), device, context);
+	shared_ptr<Mesh> torusMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\torus.obj").c_str(), device, context);
 
 	entities = std::vector<std::shared_ptr<Entity>>();
-	entities.push_back(std::make_shared<Entity>(triangleMesh, goldMaterial));
-	entities.push_back(std::make_shared<Entity>(triangleMesh, greenMaterial));
-	entities.push_back(std::make_shared<Entity>(heartMesh, redMaterial));
-	entities.push_back(std::make_shared<Entity>(heartMesh, redMaterial));
-	entities.push_back(std::make_shared<Entity>(heartMesh, redMaterial));
+	entities.push_back(std::make_shared<Entity>(cubeMesh, goldMaterial));
+	entities.push_back(std::make_shared<Entity>(cubeMesh, greenMaterial));
+	entities.push_back(std::make_shared<Entity>(torusMesh, redMaterial));
+	entities.push_back(std::make_shared<Entity>(torusMesh, redMaterial));
+	entities.push_back(std::make_shared<Entity>(torusMesh, redMaterial));
 
 	entities[0]->GetTransform()->MoveBy(-0.125f, 0.0f, 0.0f);
 	entities[0]->GetTransform()->ScaleBy(0.5f, 0.5f, 0.5f);
 	entities[1]->GetTransform()->MoveBy(0.0f, 0.2f, 0.0f);
-	entities[1]->GetTransform()->ScaleBy(10.0f, 10.0f, 10.0f);
+	entities[1]->GetTransform()->ScaleBy(2.0f, 2.0f, 2.0f);
 	entities[2]->GetTransform()->MoveBy(0.45f, 0.45f, 0.0f);
 	entities[3]->GetTransform()->MoveBy(-0.45f, -0.45f, 0.0f);
 	entities[4]->GetTransform()->MoveBy(-0.45f, 0.45f, 0.0f);

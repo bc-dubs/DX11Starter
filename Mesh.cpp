@@ -12,7 +12,7 @@ Mesh::Mesh(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCo
 	Init(vertices, vertexCount, indices, indexCount, device, context);
 }
 
-Mesh::Mesh(const char* filename, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> context)
+Mesh::Mesh(const wchar_t* filename, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> context)
 	: context(context)
 {
 	indexCount = 0;
