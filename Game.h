@@ -3,6 +3,7 @@
 #include "DXCore.h"
 #include "Entity.h"
 #include "Camera.h"
+#include "SimpleShader.h"
 #include <memory>
 #include <DirectXMath.h>
 #include <wrl/client.h> // Used for ComPtr - a smart pointer for COM objects
@@ -43,15 +44,13 @@ private:
 	// Buffers to hold actual geometry data
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
-	Microsoft::WRL::ComPtr<ID3D11Buffer> vsConstantBuffer;
 	
 	// Shaders and shader-related constructs
-	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
-	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
-	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
+	std::shared_ptr<SimplePixelShader> pixelShader;
+	std::shared_ptr<SimpleVertexShader> vertexShader;
 
 	// A list of objects to draw on-screen
-	std::vector<Entity> entities;
+	std::vector<std::shared_ptr<Entity>> entities;
 	DirectX::XMFLOAT4 colorTint;
 	
 	// A list of cameras

@@ -20,6 +20,8 @@ public:
 	/// <param name="device">A pointer to the Direct3D Device object</param>
 	/// <param name="context">A pointer to the Direct3D Device Context object</param>
 	Mesh(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> context);
+	// Constructor that accepts the name of an OBJ file to load
+	Mesh(const char* filename, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> context);
 	~Mesh();
 
 	/// <summary>
@@ -50,5 +52,6 @@ private:
 
 	unsigned int indexCount;
 
+	void Init(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> context);
 };
 
