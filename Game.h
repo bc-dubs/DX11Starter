@@ -47,6 +47,7 @@ private:
 	
 	// Shaders and shader-related constructs
 	std::shared_ptr<SimplePixelShader> pixelShader;
+	std::shared_ptr<SimplePixelShader> specialPixelShader;
 	std::shared_ptr<SimpleVertexShader> vertexShader;
 
 	// A list of objects to draw on-screen

@@ -127,6 +127,7 @@ void Game::LoadShaders()
 {
 	vertexShader = std::make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
 	pixelShader = std::make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
+	specialPixelShader = std::make_shared<SimplePixelShader>(device, context, FixPath(L"SpecialPixelShader.cso").c_str());
 }
 
 
@@ -144,7 +145,7 @@ void Game::CreateGeometry()
 	XMFLOAT4 gold	= XMFLOAT4(1.0f, 0.84f, 0.0f, 1.0f);
 
 	std::shared_ptr<Material> redMaterial = std::make_shared<Material>(red, vertexShader, pixelShader);
-	std::shared_ptr<Material> greenMaterial = std::make_shared<Material>(green, vertexShader, pixelShader);
+	std::shared_ptr<Material> greenMaterial = std::make_shared<Material>(green, vertexShader, specialPixelShader);
 	std::shared_ptr<Material> goldMaterial = std::make_shared<Material>(gold, vertexShader, pixelShader);
 
 
