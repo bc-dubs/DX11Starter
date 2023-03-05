@@ -24,8 +24,6 @@ public:
 	DirectX::XMFLOAT3* GetUp();
 	DirectX::XMFLOAT3* GetForward();
 
-
-
 	// Setters
 	void SetPosition(DirectX::XMFLOAT3 newPos);
 	void SetPosition(float x, float y, float z);
@@ -60,7 +58,7 @@ private:
 
 	// Has the transform changed since the matrix was last calculated?
 	bool transformAltered;
-	// Has the transform changed since the matrix was last calculated?
+	// Has the rotation changed since the matrix was last calculated?
 	bool rotationAltered;
 
 	void UpdateMatrices();

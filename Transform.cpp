@@ -12,9 +12,9 @@ Transform::Transform(DirectX::XMFLOAT3 position, DirectX::XMFLOAT4 rotation, Dir
     rotation(rotation),
     scale(scale)
 {
-    transformAltered = true;
     XMStoreFloat4x4(&worldMatrix, XMMatrixIdentity());
     XMStoreFloat4x4(&worldInverseTransposeMatrix, XMMatrixIdentity());
+    transformAltered = true;
     UpdateRotation();
 }
 
@@ -22,6 +22,8 @@ Transform::Transform(DirectX::XMFLOAT3 position, DirectX::XMFLOAT3 pitchYawRoll,
     : Transform(position, XMFLOAT4(0, 0, 0, 0), scale)
 {
     XMStoreFloat4(&rotation, XMQuaternionRotationRollPitchYawFromVector(XMLoadFloat3(&pitchYawRoll)));
+    transformAltered = true;
+    UpdateRotation();
 }
 
 Transform::~Transform()

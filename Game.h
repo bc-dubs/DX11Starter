@@ -26,8 +26,6 @@ public:
 	/// <summary>
 	/// Function called in Update() that handles ImGui
 	/// </summary>
-	/// <param name="deltaTime"></param>
-	/// <param name="totalTime"></param>
 	void UpdateImGui(float deltaTime, float totalTime);
 
 private:
@@ -35,11 +33,6 @@ private:
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
 	void LoadShaders(); 
 	void CreateGeometry();
-
-	// Note the usage of ComPtr below
-	//  - This is a smart pointer for objects that abide by the
-	//     Component Object Model, which DirectX objects do
-	//  - More info here: https://github.com/Microsoft/DirectXTK/wiki/ComPtr
 
 	// Buffers to hold actual geometry data
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;

@@ -11,7 +11,7 @@
 class Entity
 {
 public:
-	Entity(std::shared_ptr<Mesh> mesh, std::shared_ptr<Material> material);
+	Entity(std::shared_ptr<Mesh> mesh, std::shared_ptr<Material> material); // add constructor that takes transform or one that takes parent?
 	~Entity();
 
 	// Getters

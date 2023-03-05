@@ -5,26 +5,17 @@
 
 using namespace DirectX;
 
-Mesh::Mesh(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> context)
-	: indexCount(indexCount),
-	context(context)
+Mesh::Mesh(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount, Microsoft::WRL::ComPtr<ID3D11Device> device)
+	: indexCount(indexCount)
 {
-	Init(vertices, vertexCount, indices, indexCount, device, context);
+	Init(vertices, vertexCount, indices, indexCount, device);
 }
 
-Mesh::Mesh(const wchar_t* filename, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> context)
-	: context(context)
+Mesh::Mesh(const wchar_t* filename, Microsoft::WRL::ComPtr<ID3D11Device> device)
 {
 	indexCount = 0;
 	// Author: Chris Cascioli
 	// Purpose: Basic .OBJ 3D model loading, supporting positions, uvs and normals
-	// 
-	// - You are allowed to directly copy/paste this into your code base
-	//   for assignments, given that you clearly cite that this is not
-	//   code of your own design.
-	//
-	// - NOTE: You'll need to #include <fstream>
-
 
 	// File input object
 	std::ifstream obj(filename);
@@ -218,12 +209,6 @@ Mesh::Mesh(const wchar_t* filename, Microsoft::WRL::ComPtr<ID3D11Device> device,
 	// Close the file and create the actual buffers
 	obj.close();
 
-	// - At this point, "verts" is a vector of Vertex structs, and can be used
-	//    directly to create a vertex buffer:  &verts[0] is the address of the first vert
-	//
-	// - The vector "indices" is similar. It's a vector of unsigned ints and
-	//    can be used directly for the index buffer: &indices[0] is the address of the first int
-	//
 	// - "vertCounter" is the number of vertices
 	// - "indexCounter" is the number of indices
 	// - Yes, these are effectively the same since OBJs do not index entire vertices!  This means
@@ -232,7 +217,7 @@ Mesh::Mesh(const wchar_t* filename, Microsoft::WRL::ComPtr<ID3D11Device> device,
 	//    sophisticated model loading library like TinyOBJLoader or The Open Asset Importer Library
 
 	indexCount = indexCounter;
-	Init(&verts[0], vertCounter, &indices[0], indexCounter, device, context);
+	Init(&verts[0], vertCounter, &indices[0], indexCounter, device);
 }
 
 Mesh::~Mesh()
@@ -240,7 +225,7 @@ Mesh::~Mesh()
 
 }
 
-void Mesh::Init(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> context)
+void Mesh::Init(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount, Microsoft::WRL::ComPtr<ID3D11Device> device)
 {
 	// Below code mostly copied from Game.cpp starter code
 
@@ -269,9 +254,7 @@ void Mesh::Init(Vertex* vertices, int vertexCount, unsigned int* indices, int in
 
 	// Create an INDEX BUFFER
 	// - This holds indices to elements in the vertex buffer
-	// - This is most useful when vertices are shared among neighboring triangles
-	// - This buffer is created on the GPU, which is where the data needs to
-	//    be if we want the GPU to act on it (as in: draw it to the screen)
+	// - This buffer is created on the GPU
 	{
 		// Describe the buffer, as we did above, with two major differences
 		//  - Byte Width (3 unsigned integers vs. 3 whole vertices)
@@ -309,21 +292,14 @@ unsigned int Mesh::GetIndexCount()
 	return indexCount;
 }
 
-void Mesh::Draw()
+void Mesh::Draw(Microsoft::WRL::ComPtr<ID3D11DeviceContext> context)
 {
 	// Below code mostly copied from Game.cpp starter code
-
-	// DRAW geometry
-	// - These steps are generally repeated for EACH object you draw
-	// - Other Direct3D calls will also be necessary to do more complex things
 	UINT stride = sizeof(Vertex);
 	UINT offset = 0;
 	{
 		// Set buffers in the input assembler (IA) stage
 		//  - Do this ONCE PER OBJECT, since each object may have different geometry
-		//  - For this demo, this step *could* simply be done once during Init()
-		//  - However, this needs to be done between EACH DrawIndexed() call
-		//     when drawing different geometry, so it's here as an example
 		context->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
 		context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 

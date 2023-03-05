@@ -2,6 +2,7 @@
 
 // Ben Coukos-Wiley
 // 1/24/2023
+// A set of vertices and indices that defines an object
 
 #include <d3d11.h>
 #include <wrl/client.h>
@@ -11,17 +12,13 @@ class Mesh
 {
 public:
 	/// <summary>
-	/// Complete constructor for this mesh object
+	/// Constructor that takes the raw vertex/index data
 	/// </summary>
-	/// <param name="vertices">An array of vertices used to draw this mesh</param>
-	/// <param name="vertexCount">The total number of vertices in this mesh</param>
-	/// <param name="indices">An array of indices used to draw this mesh</param>
-	/// <param name="indexCount">The total number of indices in this mesh</param>
-	/// <param name="device">A pointer to the Direct3D Device object</param>
-	/// <param name="context">A pointer to the Direct3D Device Context object</param>
-	Mesh(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> context);
-	// Constructor that accepts the name of an OBJ file to load
-	Mesh(const wchar_t* filename, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> context);
+	Mesh(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount, Microsoft::WRL::ComPtr<ID3D11Device> device);
+	/// <summary>
+	/// Constructor that takes the name of an OBJ file to load from
+	/// </summary>
+	Mesh(const wchar_t* filename, Microsoft::WRL::ComPtr<ID3D11Device> device);
 	~Mesh();
 
 	/// <summary>
@@ -42,16 +39,14 @@ public:
 	/// <summary>
 	/// Draws this mesh
 	/// </summary>
-	void Draw();
+	void Draw(Microsoft::WRL::ComPtr<ID3D11DeviceContext> context);
 
 private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
 
-	Microsoft::WRL::ComPtr<ID3D11DeviceContext>	context;
-
 	unsigned int indexCount;
 
-	void Init(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount, Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> context);
+	void Init(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount, Microsoft::WRL::ComPtr<ID3D11Device> device);
 };
 

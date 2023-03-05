@@ -49,13 +49,6 @@ Game::Game(HINSTANCE hInstance)
 // --------------------------------------------------------
 Game::~Game()
 {
-	// Call delete or delete[] on any objects or arrays you've
-	// created using new or new[] within this class
-	// - Note: this is unnecessary if using smart pointers
-
-	// Call Release() on any Direct3D objects made within this class
-	// - Note: this is unnecessary for D3D objects stored in ComPtrs
-
 	// ImGui clean up
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
@@ -68,32 +61,18 @@ Game::~Game()
 // --------------------------------------------------------
 void Game::Init()
 {
-	// Helper methods for loading shaders, creating some basic
-	// geometry to draw and some simple camera matrices.
-	//  - You'll be expanding and/or replacing these later
 	LoadShaders();
 	CreateGeometry();
 	
 	// Set initial graphics API state
 	//  - These settings persist until we change them
-	//  - Some of these, like the primitive topology & input layout, probably won't change
-	//  - Others, like setting shaders, will need to be moved elsewhere later
 	{
 		// Tell the input assembler (IA) stage of the pipeline what kind of
 		// geometric primitives (points, lines or triangles) we want to draw.  
 		// Essentially: "What kind of shape should the GPU draw with our vertices?"
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		// Ensure the pipeline knows how to interpret all the numbers stored in
-		// the vertex buffer. For this course, all of your vertices will probably
-		// have the same layout, so we can just set this once at startup.
-//		context->IASetInputLayout(inputLayout.Get());
-
-		// Set the active vertex and pixel shaders
-		//  - Once you start applying different shaders to different objects,
-		//    these calls will need to happen multiple times per frame
-//		context->VSSetShader(vertexShader.Get(), 0, 0);
-//		context->PSSetShader(pixelShader.Get(), 0, 0);
+		// Input layout now handled by SimpleShader
 	}
 
 	{
@@ -119,9 +98,6 @@ void Game::Init()
 // Loads shaders from compiled shader object (.cso) files
 // and also creates the Input Layout that describes our 
 // vertex data to the rendering pipeline. 
-// - Input Layout creation is done here because it must 
-//    be verified against vertex shader byte code
-// - We'll have that byte code already loaded below
 // --------------------------------------------------------
 void Game::LoadShaders()
 {
@@ -129,6 +105,7 @@ void Game::LoadShaders()
 	pixelShader = std::make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
 	specialPixelShader = std::make_shared<SimplePixelShader>(device, context, FixPath(L"SpecialPixelShader.cso").c_str());
 
+	// Below variables are only used in the specialPixelShader
 	specialShaderFuncs = std::vector<int>();
 	specialShaderFuncs.push_back(0);
 	specialShaderFuncs.push_back(0);
@@ -145,28 +122,27 @@ void Game::LoadShaders()
 
 
 // --------------------------------------------------------
-// Creates the geometry we're going to draw - a single triangle for now
+// Creates the geometry we're going to draw
 // --------------------------------------------------------
 void Game::CreateGeometry()
 {
 	// Create some temporary variables to represent colors
-	// - Not necessary, just makes things more readable
 	XMFLOAT4 red	= XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
 	XMFLOAT4 green	= XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
 	XMFLOAT4 blue	= XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
 	XMFLOAT4 gold	= XMFLOAT4(1.0f, 0.84f, 0.0f, 1.0f);
 
+	// Creating materials
 	std::shared_ptr<Material> redMaterial = std::make_shared<Material>(red, vertexShader, pixelShader);
 	std::shared_ptr<Material> greenMaterial = std::make_shared<Material>(green, vertexShader, specialPixelShader);
 	std::shared_ptr<Material> goldMaterial = std::make_shared<Material>(gold, vertexShader, pixelShader);
 
-
 	// Creating pointers to each mesh object
-	
-	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\cube.obj").c_str(), device, context);
-	shared_ptr<Mesh> sphereMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\sphere.obj").c_str(), device, context);
-	shared_ptr<Mesh> torusMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\torus.obj").c_str(), device, context);
+	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\cube.obj").c_str(), device);
+	shared_ptr<Mesh> sphereMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\sphere.obj").c_str(), device);
+	shared_ptr<Mesh> torusMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\torus.obj").c_str(), device);
 
+	// Creating entity objects
 	entities = std::vector<std::shared_ptr<Entity>>();
 	entities.push_back(std::make_shared<Entity>(cubeMesh, goldMaterial));
 	entities.push_back(std::make_shared<Entity>(cubeMesh, greenMaterial));
@@ -174,6 +150,7 @@ void Game::CreateGeometry()
 	entities.push_back(std::make_shared<Entity>(torusMesh, redMaterial));
 	entities.push_back(std::make_shared<Entity>(torusMesh, redMaterial));
 
+	// Doing initial entity transformations
 	entities[0]->GetTransform()->MoveBy(-0.125f, 0.0f, 0.0f);
 	entities[0]->GetTransform()->ScaleBy(0.5f, 0.5f, 0.5f);
 	entities[1]->GetTransform()->MoveBy(0.0f, 0.2f, 0.0f);
@@ -187,7 +164,6 @@ void Game::CreateGeometry()
 // --------------------------------------------------------
 // Handle resizing to match the new window size.
 //  - DXCore needs to resize the back buffer
-//  - Eventually, we'll want to update our 3D camera
 // --------------------------------------------------------
 void Game::OnResize()
 {
@@ -200,14 +176,14 @@ void Game::OnResize()
 }
 
 // --------------------------------------------------------
-// Update your game here - user input, move objects, AI, etc.
+// Main game loop
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 {
 	UpdateImGui(deltaTime, totalTime);
 
 	entities[0]->GetTransform()->MoveBy(deltaTime * 0.25f * (float) sin(totalTime), deltaTime * 0.25f * (float) cos(totalTime), 0.0f);
-	//entities[1]->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
+	entities[1]->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
 	//entities[2].GetTransform()->ScaleBy(1.1 - sin(totalTime), 1.1 - sin(totalTime), 1.1 - sin(totalTime));
 	entities[2]->GetTransform()->ScaleBy(1 + deltaTime * 0.25f * (float) sin(totalTime), 1.0f, 1.0f);
 	entities[3]->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
@@ -238,7 +214,7 @@ void Game::Draw(float deltaTime, float totalTime)
 	}
 
 	for (unsigned int i = 0; i < entities.size(); i++) {
-		// Defining starting points
+		// Defining temporary variables for cleaner code (hopefully no performance cost here?)
 		std::shared_ptr<Entity> entity = entities[i];
 		std::shared_ptr<Material> material = entity->GetMaterial();
 		std::shared_ptr<SimpleVertexShader> vs = material->GetVertexShader();
@@ -256,11 +232,11 @@ void Game::Draw(float deltaTime, float totalTime)
 		ps->SetFloat4("functionVars", XMFLOAT4(specialShaderVars[0], specialShaderVars[1], specialShaderVars[2], specialShaderVars[3]));
 		ps->CopyAllBufferData();
 
-		// Material code
+		// Setting the current material's shaders
 		vs->SetShader();
 		ps->SetShader();
 
-		entity->GetMesh()->Draw();
+		entity->GetMesh()->Draw(context);
 	}
 	
 
@@ -306,6 +282,7 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 
 	ImGui::Begin("Custom GUI");
 
+	// Basic information
 	ImGui::Text("The current framerate is %f", ImGui::GetIO().Framerate);
 	ImGui::Text("The game window is %i pixels wide and %i pixels high", windowWidth, windowHeight);
 	ImGui::ColorEdit4("Geometry tint", &colorTint.x);
@@ -340,7 +317,8 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 		}
 	}
 
-	if (ImGui::CollapsingHeader("Functions")) {
+	// Vector field shader GUI
+	if (ImGui::CollapsingHeader("Vector Field Functions")) {
 		const char* xFunctions[] = { "x", "x^2", "x^(1/2)", "2^x", "ln(x)/ln(2)", "sin(x)", "cos(x)", "tan(x)" };
 		const char* yFunctions[] = { "y", "y^2", "y^(1/2)", "2^y", "ln(y)/ln(2)", "sin(y)", "cos(y)", "tan(y)" };
 		const char* xInputs[] = { "x", "y", "x+y", "x-y" };

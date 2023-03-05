@@ -4,7 +4,7 @@ Entity::Entity(std::shared_ptr<Mesh> mesh, std::shared_ptr<Material> material)
     : mesh(mesh), 
     material(material)
 {
-    transform = std::make_shared<Transform>(Transform());
+    transform = std::make_shared<Transform>(Transform()); // The entity starts at (0, 0, 0) by default
 }
 
 Entity::~Entity()
