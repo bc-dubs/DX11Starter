@@ -49,6 +49,8 @@ private:
 	std::shared_ptr<SimplePixelShader> pixelShader;
 	std::shared_ptr<SimplePixelShader> specialPixelShader;
 	std::shared_ptr<SimpleVertexShader> vertexShader;
+	std::vector<int> specialShaderFuncs;
+	std::vector<float> specialShaderVars;
 
 	// A list of objects to draw on-screen
 	std::vector<std::shared_ptr<Entity>> entities;

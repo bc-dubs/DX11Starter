@@ -128,6 +128,18 @@ void Game::LoadShaders()
 	vertexShader = std::make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
 	pixelShader = std::make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
 	specialPixelShader = std::make_shared<SimplePixelShader>(device, context, FixPath(L"SpecialPixelShader.cso").c_str());
+
+	specialShaderFuncs = std::vector<int>();
+	specialShaderFuncs.push_back(0);
+	specialShaderFuncs.push_back(0);
+	specialShaderFuncs.push_back(0);
+	specialShaderFuncs.push_back(0);
+
+	specialShaderVars = std::vector<float>();
+	specialShaderVars.push_back(2);
+	specialShaderVars.push_back(2);
+	specialShaderVars.push_back(1);
+	specialShaderVars.push_back(2.82f);
 }
 
 
@@ -195,7 +207,7 @@ void Game::Update(float deltaTime, float totalTime)
 	UpdateImGui(deltaTime, totalTime);
 
 	entities[0]->GetTransform()->MoveBy(deltaTime * 0.25f * (float) sin(totalTime), deltaTime * 0.25f * (float) cos(totalTime), 0.0f);
-	entities[1]->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
+	//entities[1]->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
 	//entities[2].GetTransform()->ScaleBy(1.1 - sin(totalTime), 1.1 - sin(totalTime), 1.1 - sin(totalTime));
 	entities[2]->GetTransform()->ScaleBy(1 + deltaTime * 0.25f * (float) sin(totalTime), 1.0f, 1.0f);
 	entities[3]->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
@@ -239,6 +251,9 @@ void Game::Draw(float deltaTime, float totalTime)
 		vs->CopyAllBufferData();
 
 		ps->SetFloat4("colorTint", material->GetTint());
+		ps->SetInt("xFunction", specialShaderFuncs[0] * 4 + specialShaderFuncs[1]);
+		ps->SetInt("yFunction", specialShaderFuncs[2] * 4 + specialShaderFuncs[3]);
+		ps->SetFloat4("functionVars", XMFLOAT4(specialShaderVars[0], specialShaderVars[1], specialShaderVars[2], specialShaderVars[3]));
 		ps->CopyAllBufferData();
 
 		// Material code
@@ -323,6 +338,23 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 				ImGui::TreePop();
 			}
 		}
+	}
+
+	if (ImGui::CollapsingHeader("Functions")) {
+		const char* xFunctions[] = { "x", "x^2", "x^(1/2)", "2^x", "ln(x)/ln(2)", "sin(x)", "cos(x)", "tan(x)" };
+		const char* yFunctions[] = { "y", "y^2", "y^(1/2)", "2^y", "ln(y)/ln(2)", "sin(y)", "cos(y)", "tan(y)" };
+		const char* xInputs[] = { "x", "y", "x+y", "x-y" };
+		const char* yInputs[] = { "y", "x", "y+x", "y-x" };
+		ImGui::Combo("X Function", &specialShaderFuncs[0], xFunctions, IM_ARRAYSIZE(xFunctions), 5);
+		ImGui::Combo("X Input", &specialShaderFuncs[1], xInputs, IM_ARRAYSIZE(xInputs), 4);
+		ImGui::InputFloat("X coefficient", &specialShaderVars[0], 0.1f, 1.0f, "% .2f");
+		ImGui::Separator();
+		ImGui::Combo("Y Function", &specialShaderFuncs[2], yFunctions, IM_ARRAYSIZE(yFunctions), 5);
+		ImGui::Combo("Y Input", &specialShaderFuncs[3], yInputs, IM_ARRAYSIZE(yInputs), 4);
+		ImGui::InputFloat("Y coefficient", &specialShaderVars[1], 0.1f, 1.0f, "% .2f");
+		ImGui::Separator();
+		ImGui::InputFloat("Magnitude divisor", &specialShaderVars[2], 0.01f, 1.0f, "% .3f");
+		ImGui::InputFloat("Minimum light divisor", &specialShaderVars[3], 0.01f, 1.0f, "% .3f");
 	}
 
 	ImGui::End();

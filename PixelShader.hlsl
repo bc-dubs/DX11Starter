@@ -1,5 +1,8 @@
 cbuffer ExternalData : register(b0) {
 	float4 colorTint;
+	float4 functionVars; // Unused in this shader
+	int xFunction; // Unused in this shader
+	int yFunction; // Unused in this shader
 }
 
 // Struct representing the data we expect to receive from earlier pipeline stages
@@ -14,8 +17,8 @@ struct VertexToPixel
 	//  |   Name          Semantic
 	//  |    |                |
 	//  v    v                v
-	float4 screenPosition	: SV_POSITION;
-	float4 color			: COLOR;
+	float4 screenPosition	: SV_POSITION;	// XYZW position (System Value Position)
+	float2 uv				: TEXCOORD;     // UV position
 };
 
 // --------------------------------------------------------
