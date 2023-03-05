@@ -1,19 +1,16 @@
-cbuffer ExternalData : register(b0) {
-	float4 colorTint;
-	float4 functionVars; // Unused in this shader
-	int xFunction; // Unused in this shader
-	int yFunction; // Unused in this shader
-}
 
-// Struct representing the data we expect to receive from earlier pipeline stages
-// - Should match the output of our corresponding vertex shader
-// - The name of the struct itself is unimportant
-// - The variable names don't have to match other shaders (just the semantics)
-struct VertexToPixel
-{
-	float4 screenPosition	: SV_POSITION;	// XYZW position (System Value Position)
-	float2 uv				: TEXCOORD;     // UV position
-};
+#include "ShaderIncludes.hlsli"
+
+cbuffer ExternalData : register(b0) {
+	float4 colorTint;		
+	float3 cameraPos;		// The position of the current camera in world space
+	float roughness;		// Specular constant based on mesh material
+	Light directionalLight1;
+	float4 functionVars;	// Unused in this shader
+	float3 ambient;			// Scene-wide ambient light constant
+	int xFunction;			// Unused in this shader
+	int yFunction;			// Unused in this shader
+}
 
 // --------------------------------------------------------
 // The entry point (main method) for our pixel shader
@@ -24,9 +21,8 @@ struct VertexToPixel
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
 {
-	// Just return the input color
-	// - This color (like most values passing through the rasterizer) is 
-	//   interpolated for each pixel between the corresponding vertices 
-	//   of the triangle we're rendering
-	return colorTint;
+	input.normal = normalize(input.normal);
+	float3 diffuse = CalculateDiffuse(directionalLight1, input.normal);
+	
+	return float4((ambient + diffuse) * colorTint, 1);
 }

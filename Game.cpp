@@ -39,7 +39,7 @@ Game::Game(HINSTANCE hInstance)
 	printf("Console window created successfully.  Feel free to printf() here.\n");
 #endif
 	cameraIndex = 0;
-	colorTint = XMFLOAT4(0.1f, 1.0f, 0.5f, 1.0f);
+	ambientColor = XMFLOAT4(0.05f, 0.15f, 0.2f, 1.0f);
 }
 
 // --------------------------------------------------------
@@ -75,11 +75,20 @@ void Game::Init()
 		// Input layout now handled by SimpleShader
 	}
 
+	// Create camera(s)
+	cameras = vector<shared_ptr<Camera>>();
+	cameras.push_back(std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, -10))));
+	cameras.push_back(std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, 10), XMFLOAT4(1, 0, 0, 0), XM_PIDIV4, 5, 0.001f, 0.01f, 50, false, XMFLOAT3(0.4f, 0.6f, 0))));
+
+	// Create lights
+	lights = vector<Light>();
 	{
-		// Create camera(s)
-		cameras = vector<shared_ptr<Camera>>();
-		cameras.push_back(std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, -10))));
-		cameras.push_back(std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, 10), XMFLOAT4(1, 0, 0, 0), XM_PIDIV4, 5, 0.001f, 0.01f, 50, false, XMFLOAT3(0.4f, 0.6f, 0))));
+		Light directionalLight = {};
+		directionalLight.Type = LIGHT_TYPE_DIRECTIONAL;
+		directionalLight.Direction = XMFLOAT3(-1, -1, 0.1f);
+		directionalLight.Color = XMFLOAT3(1.0f, 0.3f, 0.3f);
+		directionalLight.Intensity = 1.0f;
+		lights.push_back(directionalLight);
 	}
 
 	// Initialize ImGui itself & platform/renderer backends
@@ -133,9 +142,9 @@ void Game::CreateGeometry()
 	XMFLOAT4 gold	= XMFLOAT4(1.0f, 0.84f, 0.0f, 1.0f);
 
 	// Creating materials
-	std::shared_ptr<Material> redMaterial = std::make_shared<Material>(red, vertexShader, pixelShader);
-	std::shared_ptr<Material> greenMaterial = std::make_shared<Material>(green, vertexShader, specialPixelShader);
-	std::shared_ptr<Material> goldMaterial = std::make_shared<Material>(gold, vertexShader, pixelShader);
+	std::shared_ptr<Material> redMaterial = std::make_shared<Material>(red, vertexShader, pixelShader, 1);
+	std::shared_ptr<Material> greenMaterial = std::make_shared<Material>(green, vertexShader, pixelShader, 0);
+	std::shared_ptr<Material> goldMaterial = std::make_shared<Material>(gold, vertexShader, pixelShader, 0.5f);
 
 	// Creating pointers to each mesh object
 	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\cube.obj").c_str(), device);
@@ -222,14 +231,19 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		// Setting what used to be constant buffer data, now handled by simpleShader
 		vs->SetMatrix4x4("world", entity->GetTransform()->GetWorldMatrix());
+		vs->SetMatrix4x4("worldInvTranspose", entity->GetTransform()->GetWorldInverseTransposeMatrix());
 		vs->SetMatrix4x4("view", cameras[cameraIndex]->GetViewMatrix());
 		vs->SetMatrix4x4("projection", cameras[cameraIndex]->GetProjectionMatrix());
 		vs->CopyAllBufferData();
 
 		ps->SetFloat4("colorTint", material->GetTint());
+		ps->SetFloat3("cameraPos", *cameras[cameraIndex]->GetTransform()->GetPosition());
+		ps->SetFloat("roughness", material->GetRoughness());
+		ps->SetData("directionalLight1", &lights[0], sizeof(Light));
+		ps->SetFloat4("functionVars", XMFLOAT4(specialShaderVars[0], specialShaderVars[1], specialShaderVars[2], specialShaderVars[3]));
+		ps->SetFloat3("ambient", XMFLOAT3(ambientColor.x, ambientColor.y, ambientColor.z));
 		ps->SetInt("xFunction", specialShaderFuncs[0] * 4 + specialShaderFuncs[1]);
 		ps->SetInt("yFunction", specialShaderFuncs[2] * 4 + specialShaderFuncs[3]);
-		ps->SetFloat4("functionVars", XMFLOAT4(specialShaderVars[0], specialShaderVars[1], specialShaderVars[2], specialShaderVars[3]));
 		ps->CopyAllBufferData();
 
 		// Setting the current material's shaders
@@ -285,7 +299,7 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 	// Basic information
 	ImGui::Text("The current framerate is %f", ImGui::GetIO().Framerate);
 	ImGui::Text("The game window is %i pixels wide and %i pixels high", windowWidth, windowHeight);
-	ImGui::ColorEdit4("Geometry tint", &colorTint.x);
+	ImGui::ColorEdit4("Ambient light color", &ambientColor.x);
 
 	// Camera GUI
 	if (ImGui::CollapsingHeader("Cameras")) {
@@ -295,6 +309,10 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 			XMFLOAT3 pos = *cameras[i]->GetTransform()->GetPosition();
 			char posLabel[] = { 'P', 'o', 's', 'i', 't', 'i', 'o', 'n', ' ', (char)(i + 65), '\0' };
 			ImGui::DragFloat3(posLabel, &pos.x);
+			XMFLOAT3 rot;
+			XMStoreFloat3(&rot, XMVector3Rotate(XMVectorSet(0, 0, 1, 0), XMLoadFloat4(cameras[i]->GetTransform()->GetRotation())));
+			char rotLabel[] = { 'R', 'o', 't', 'a', 't', 'i', 'o', 'n', ' ', (char)(i + 65), '\0' };
+			ImGui::DragFloat3(rotLabel, &rot.x);
 		}
 	}
 

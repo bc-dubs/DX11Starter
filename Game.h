@@ -8,6 +8,7 @@
 #include <DirectXMath.h>
 #include <wrl/client.h> // Used for ComPtr - a smart pointer for COM objects
 #include <vector>
+#include "Lights.h"
 
 class Game 
 	: public DXCore
@@ -47,10 +48,13 @@ private:
 
 	// A list of objects to draw on-screen
 	std::vector<std::shared_ptr<Entity>> entities;
-	DirectX::XMFLOAT4 colorTint;
+	DirectX::XMFLOAT4 ambientColor;
 	
 	// A list of cameras
 	std::vector<std::shared_ptr<Camera>> cameras;
 	int cameraIndex;
+
+	// A list of lights
+	std::vector<Light> lights;
 };
 

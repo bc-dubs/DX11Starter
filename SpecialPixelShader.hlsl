@@ -2,22 +2,14 @@
 // 3/3/2023
 // A pixel shader based on a (U,V)-defined vector field
 
+#include "ShaderIncludes.hlsli"
+
 cbuffer ExternalData : register(b0) {
 	float4 colorTint;		// Unused in this shader
 	float4 functionVars;	// X = x coefficient, Y = y coefficient, Z = first lightness divider, W = second lightness divider
 	int xFunction;			// The index of the X function
 	int yFunction;			// The index of the Y function
 }
-
-// Struct representing the data we expect to receive from earlier pipeline stages
-// - Should match the output of our corresponding vertex shader
-// - The name of the struct itself is unimportant
-// - The variable names don't have to match other shaders (just the semantics)
-struct VertexToPixel
-{
-	float4 screenPosition	: SV_POSITION;	// XYZW position (System Value Position)
-	float2 uv				: TEXCOORD;     // UV position
-};
 
 // A helper method to apply the selected vector field function
 float applyFunction(int index, float x, float y) {
