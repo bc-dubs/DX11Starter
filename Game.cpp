@@ -90,6 +90,41 @@ void Game::Init()
 		directionalLight.Intensity = 1.0f;
 		lights.push_back(directionalLight);
 	}
+	{
+		Light directionalLight = {};
+		directionalLight.Type = LIGHT_TYPE_DIRECTIONAL;
+		directionalLight.Direction = XMFLOAT3(0, 0, -1);
+		directionalLight.Color = XMFLOAT3(0.2f, 0.2f, 5.0f);
+		directionalLight.Intensity = 0.5f;
+		lights.push_back(directionalLight);
+	}
+	{
+		Light directionalLight = {};
+		directionalLight.Type = LIGHT_TYPE_DIRECTIONAL;
+		directionalLight.Direction = XMFLOAT3(1, -1, -0.1f);
+		directionalLight.Color = XMFLOAT3(0.5f, 0.15f, 0.15f);
+		directionalLight.Intensity = 1.0f;
+		lights.push_back(directionalLight);
+	}
+	// Point lights
+	{
+		Light pointLight = {};
+		pointLight.Type = LIGHT_TYPE_POINT;
+		pointLight.Position = XMFLOAT3(3, 0, 0);
+		pointLight.Range = 4.0f;
+		pointLight.Color = XMFLOAT3(0.5f, 0.5f, 0.0f);
+		pointLight.Intensity = 1.0f;
+		lights.push_back(pointLight);
+	}
+	{
+		Light pointLight = {};
+		pointLight.Type = LIGHT_TYPE_POINT;
+		pointLight.Position = XMFLOAT3(0, 0, -5);
+		pointLight.Range = 10.0f;
+		pointLight.Color = XMFLOAT3(1.0f, 0.0f, 1.0f);
+		pointLight.Intensity = 0.5f;
+		lights.push_back(pointLight);
+	}
 
 	// Initialize ImGui itself & platform/renderer backends
 	IMGUI_CHECKVERSION();
@@ -142,31 +177,32 @@ void Game::CreateGeometry()
 	XMFLOAT4 gold	= XMFLOAT4(1.0f, 0.84f, 0.0f, 1.0f);
 
 	// Creating materials
-	std::shared_ptr<Material> redMaterial = std::make_shared<Material>(red, vertexShader, pixelShader, 1);
-	std::shared_ptr<Material> greenMaterial = std::make_shared<Material>(green, vertexShader, pixelShader, 0);
+	std::shared_ptr<Material> redMaterial = std::make_shared<Material>(red, vertexShader, pixelShader, 0.9f);
+	std::shared_ptr<Material> greenMaterial = std::make_shared<Material>(green, vertexShader, pixelShader, 0.1f);
 	std::shared_ptr<Material> goldMaterial = std::make_shared<Material>(gold, vertexShader, pixelShader, 0.5f);
+	std::shared_ptr<Material> whiteMaterial = std::make_shared<Material>(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), vertexShader, pixelShader, 0.5f);
 
 	// Creating pointers to each mesh object
-	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\cube.obj").c_str(), device);
-	shared_ptr<Mesh> sphereMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\sphere.obj").c_str(), device);
-	shared_ptr<Mesh> torusMesh = make_shared<Mesh>(FixPath(L"..\\Assets\\Meshes\\torus.obj").c_str(), device);
+	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\cube.obj").c_str(), device);
+	shared_ptr<Mesh> sphereMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\sphere.obj").c_str(), device);
+	shared_ptr<Mesh> torusMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\torus.obj").c_str(), device);
 
 	// Creating entity objects
 	entities = std::vector<std::shared_ptr<Entity>>();
-	entities.push_back(std::make_shared<Entity>(cubeMesh, goldMaterial));
-	entities.push_back(std::make_shared<Entity>(cubeMesh, greenMaterial));
-	entities.push_back(std::make_shared<Entity>(torusMesh, redMaterial));
-	entities.push_back(std::make_shared<Entity>(torusMesh, redMaterial));
-	entities.push_back(std::make_shared<Entity>(torusMesh, redMaterial));
+	entities.push_back(std::make_shared<Entity>(torusMesh, whiteMaterial));
+	entities.push_back(std::make_shared<Entity>(cubeMesh, whiteMaterial));
+	entities.push_back(std::make_shared<Entity>(sphereMesh, whiteMaterial));
+	entities.push_back(std::make_shared<Entity>(torusMesh, whiteMaterial));
+	entities.push_back(std::make_shared<Entity>(torusMesh, whiteMaterial));
 
 	// Doing initial entity transformations
-	entities[0]->GetTransform()->MoveBy(-0.125f, 0.0f, 0.0f);
+	entities[0]->GetTransform()->MoveBy(-4.0f, 0.0f, 0.0f);
 	entities[0]->GetTransform()->ScaleBy(0.5f, 0.5f, 0.5f);
 	entities[1]->GetTransform()->MoveBy(0.0f, 0.2f, 0.0f);
 	entities[1]->GetTransform()->ScaleBy(2.0f, 2.0f, 2.0f);
-	entities[2]->GetTransform()->MoveBy(0.45f, 0.45f, 0.0f);
-	entities[3]->GetTransform()->MoveBy(-0.45f, -0.45f, 0.0f);
-	entities[4]->GetTransform()->MoveBy(-0.45f, 0.45f, 0.0f);
+	entities[2]->GetTransform()->MoveBy(4.0f, 0.0f, 0.0f);
+	entities[3]->GetTransform()->MoveBy(-4.0f, -2.0f, 0.0f);
+	entities[4]->GetTransform()->MoveBy(-4.0f, 2.0f, 0.0f);
 }
 
 
@@ -239,7 +275,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		ps->SetFloat4("colorTint", material->GetTint());
 		ps->SetFloat3("cameraPos", *cameras[cameraIndex]->GetTransform()->GetPosition());
 		ps->SetFloat("roughness", material->GetRoughness());
-		ps->SetData("directionalLight1", &lights[0], sizeof(Light));
+		ps->SetData("lights", &lights[0], sizeof(Light) * (int)lights.size());
 		ps->SetFloat4("functionVars", XMFLOAT4(specialShaderVars[0], specialShaderVars[1], specialShaderVars[2], specialShaderVars[3]));
 		ps->SetFloat3("ambient", XMFLOAT3(ambientColor.x, ambientColor.y, ambientColor.z));
 		ps->SetInt("xFunction", specialShaderFuncs[0] * 4 + specialShaderFuncs[1]);
@@ -351,6 +387,14 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 		ImGui::Separator();
 		ImGui::InputFloat("Magnitude divisor", &specialShaderVars[2], 0.01f, 1.0f, "% .3f");
 		ImGui::InputFloat("Minimum light divisor", &specialShaderVars[3], 0.01f, 1.0f, "% .3f");
+	}
+
+	// Lighting GUI
+	if (ImGui::CollapsingHeader("Lights")) {
+		for (unsigned int i = 0; i < lights.size(); i++) {
+			char lightLabel[] = { 'L', 'i', 'g', 'h', 't', ' ', (char)(i + 65), ' ', 'c', 'o', 'l', 'o', 'r', '\0' };
+			ImGui::ColorEdit3(lightLabel, &lights[i].Color.x);
+		}
 	}
 
 	ImGui::End();

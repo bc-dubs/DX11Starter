@@ -44,9 +44,22 @@ struct Light {
 	float3 padding;
 };
 
-float3 CalculateDiffuse(Light light, float3 normal) {
-	float3 directionToLight = normalize(-light.direction);
+float3 CalculateDiffuse(Light light, float3 normal, float3 directionFromLight) {
+	float3 directionToLight = normalize(-directionFromLight);
 	return saturate(dot(normal, directionToLight)) * light.color * light.intensity;
+}
+
+float3 CalculateSpecular(Light light, float3 normal, float3 viewVector, float roughness, float3 directionFromLight) {
+	float3 reflection = reflect(normalize(directionFromLight), normal);
+	float specExponent = (1.0 - roughness) * MAX_SPECULAR_EXPONENT;
+	return (specExponent < MAX_SPECULAR_EXPONENT)? pow(saturate(dot(reflection, viewVector)), specExponent) : 0; // if the roughness value was zero, just return zero for specular
+}
+
+float Attenuate(Light light, float3 worldPos)
+{
+	float dist = distance(light.position, worldPos);
+	float att = saturate(1.0f - (dist * dist / (light.range * light.range)));
+	return att * att;
 }
 
 #endif
