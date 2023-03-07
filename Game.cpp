@@ -228,7 +228,7 @@ void Game::Update(float deltaTime, float totalTime)
 	UpdateImGui(deltaTime, totalTime);
 
 	entities[0]->GetTransform()->MoveBy(deltaTime * 0.25f * (float) sin(totalTime), deltaTime * 0.25f * (float) cos(totalTime), 0.0f);
-	entities[1]->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
+	//entities[1]->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
 	//entities[2].GetTransform()->ScaleBy(1.1 - sin(totalTime), 1.1 - sin(totalTime), 1.1 - sin(totalTime));
 	entities[2]->GetTransform()->ScaleBy(1 + deltaTime * 0.25f * (float) sin(totalTime), 1.0f, 1.0f);
 	entities[3]->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
@@ -349,6 +349,10 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 			XMStoreFloat3(&rot, XMVector3Rotate(XMVectorSet(0, 0, 1, 0), XMLoadFloat4(cameras[i]->GetTransform()->GetRotation())));
 			char rotLabel[] = { 'R', 'o', 't', 'a', 't', 'i', 'o', 'n', ' ', (char)(i + 65), '\0' };
 			ImGui::DragFloat3(rotLabel, &rot.x);
+
+			XMFLOAT4 quat = *cameras[i]->GetTransform()->GetRotation();
+			char quatLabel[] = { 'Q', 'u', 'a', 't', 'e', 'r', 'n', 'i', 'o', 'n', ' ', (char)(i + 65), '\0' };
+			ImGui::DragFloat4(quatLabel, &quat.x);
 		}
 	}
 
@@ -361,10 +365,14 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 				XMFLOAT4 rot = *entities[i]->GetTransform()->GetRotation(); // All I could think to do is just display quaternion data, though I know that's not super intuitive
 				XMFLOAT3 sc = *entities[i]->GetTransform()->GetScale();
 
-				ImGui::DragFloat3("Position", &pos.x); // I also couldn't figure out how to make these editable
-				ImGui::DragFloat4("Rotation", &rot.x);
-				ImGui::DragFloat3("Scale", &sc.x);
+				ImGui::DragFloat3("Position", &pos.x, 0.01f);
+				ImGui::DragFloat4("Rotation", &rot.x, 0.01f);
+				ImGui::DragFloat3("Scale", &sc.x, 0.01f);
 				ImGui::Text("Tris: %i", entities[i]->GetMesh()->GetIndexCount() / 3);
+
+				entities[i]->GetTransform()->SetPosition(pos);
+				entities[i]->GetTransform()->SetRotation(rot);
+				entities[i]->GetTransform()->SetScale(sc);
 				
 				ImGui::TreePop();
 			}

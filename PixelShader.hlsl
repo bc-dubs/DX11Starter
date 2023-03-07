@@ -1,11 +1,13 @@
 
 #include "ShaderIncludes.hlsli"
 
+#define NUM_LIGHTS 5
+
 cbuffer ExternalData : register(b0) {
 	float4 colorTint;		
 	float3 cameraPos;		// The position of the current camera in world space
 	float roughness;		// Specular constant based on mesh material
-	Light lights[5];
+	Light lights[NUM_LIGHTS];
 	float4 functionVars;	// Unused in this shader
 	float3 ambient;			// Scene-wide ambient light constant
 	int xFunction;			// Unused in this shader
@@ -27,7 +29,7 @@ float4 main(VertexToPixel input) : SV_TARGET
 	float3 diffuse;
 	float3 specular;
 	
-	for (int i = 0; i < 5; i++) { // why is there no array length function that's kind of garbage
+	for (int i = 0; i < NUM_LIGHTS; i++) {
 
 		float3 lightDirection = lights[i].direction;
 		float attenuation = 1.0;
