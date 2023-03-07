@@ -2,6 +2,9 @@
 #include "Vertex.h"
 #include "Input.h"
 #include "Helpers.h"
+#include "Material.h"
+
+#include <WICTextureLoader.h>
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
@@ -10,7 +13,7 @@
 // Needed for a helper function to load pre-compiled shader files
 #pragma comment(lib, "d3dcompiler.lib")
 #include <d3dcompiler.h>
-#include "Material.h"
+
 
 // For the DirectX Math library
 using namespace DirectX;
@@ -78,7 +81,7 @@ void Game::Init()
 	// Create camera(s)
 	cameras = vector<shared_ptr<Camera>>();
 	cameras.push_back(std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, -10))));
-	cameras.push_back(std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, 10), XMFLOAT4(1, 0, 0, 0), XM_PIDIV4, 5, 0.001f, 0.01f, 50, false, XMFLOAT3(0.4f, 0.6f, 0))));
+	cameras.push_back(std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, -10), XMFLOAT4(0, 0, 0, 1), XM_PIDIV4, 5, 0.001f, 0.01f, 50, false, XMFLOAT3(0.4f, 0.6f, 0))));
 
 	// Create lights
 	lights = vector<Light>();
@@ -170,6 +173,30 @@ void Game::LoadShaders()
 // --------------------------------------------------------
 void Game::CreateGeometry()
 {
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> tileSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> tileSpecularSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> metalSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> metalSpecularSRV;
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\tiles_diffuse.png").c_str(), nullptr, tileSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\tiles_specular.png").c_str(), nullptr, tileSpecularSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\rustymetal_diffuse.png").c_str(), nullptr, metalSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\rustymetal_specular.png").c_str(), nullptr, metalSpecularSRV.GetAddressOf());
+
+
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
+
+	{
+		D3D11_SAMPLER_DESC samplerDesc = {};
+		samplerDesc.AddressU		= D3D11_TEXTURE_ADDRESS_WRAP;
+		samplerDesc.AddressV		= D3D11_TEXTURE_ADDRESS_WRAP;
+		samplerDesc.AddressW		= D3D11_TEXTURE_ADDRESS_WRAP;
+		samplerDesc.Filter			= D3D11_FILTER_ANISOTROPIC;
+		samplerDesc.MaxAnisotropy	= 16;
+		samplerDesc.MaxLOD			= D3D11_FLOAT32_MAX;
+
+		device->CreateSamplerState(&samplerDesc, sampler.GetAddressOf());
+	}
+
 	// Create some temporary variables to represent colors
 	XMFLOAT4 red	= XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
 	XMFLOAT4 green	= XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
@@ -182,6 +209,14 @@ void Game::CreateGeometry()
 	std::shared_ptr<Material> goldMaterial = std::make_shared<Material>(gold, vertexShader, pixelShader, 0.5f);
 	std::shared_ptr<Material> whiteMaterial = std::make_shared<Material>(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), vertexShader, pixelShader, 0.5f);
 
+	whiteMaterial->AddTextureSRV("SurfaceTexture", tileSRV);
+	whiteMaterial->AddTextureSRV("SpecularTexture", tileSpecularSRV);
+	whiteMaterial->AddSampler("BasicSampler", sampler);
+
+	redMaterial->AddTextureSRV("SurfaceTexture", metalSRV);
+	whiteMaterial->AddTextureSRV("SpecularTexture", metalSpecularSRV);
+	redMaterial->AddSampler("BasicSampler", sampler);
+
 	// Creating pointers to each mesh object
 	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\cube.obj").c_str(), device);
 	shared_ptr<Mesh> sphereMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\sphere.obj").c_str(), device);
@@ -189,7 +224,7 @@ void Game::CreateGeometry()
 
 	// Creating entity objects
 	entities = std::vector<std::shared_ptr<Entity>>();
-	entities.push_back(std::make_shared<Entity>(torusMesh, whiteMaterial));
+	entities.push_back(std::make_shared<Entity>(torusMesh, redMaterial));
 	entities.push_back(std::make_shared<Entity>(cubeMesh, whiteMaterial));
 	entities.push_back(std::make_shared<Entity>(sphereMesh, whiteMaterial));
 	entities.push_back(std::make_shared<Entity>(torusMesh, whiteMaterial));
@@ -280,6 +315,8 @@ void Game::Draw(float deltaTime, float totalTime)
 		ps->SetFloat3("ambient", XMFLOAT3(ambientColor.x, ambientColor.y, ambientColor.z));
 		ps->SetInt("xFunction", specialShaderFuncs[0] * 4 + specialShaderFuncs[1]);
 		ps->SetInt("yFunction", specialShaderFuncs[2] * 4 + specialShaderFuncs[3]);
+
+		material->BindMaterial();
 		ps->CopyAllBufferData();
 
 		// Setting the current material's shaders
@@ -345,14 +382,27 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 			XMFLOAT3 pos = *cameras[i]->GetTransform()->GetPosition();
 			char posLabel[] = { 'P', 'o', 's', 'i', 't', 'i', 'o', 'n', ' ', (char)(i + 65), '\0' };
 			ImGui::DragFloat3(posLabel, &pos.x);
+			/*
 			XMFLOAT3 rot;
-			XMStoreFloat3(&rot, XMVector3Rotate(XMVectorSet(0, 0, 1, 0), XMLoadFloat4(cameras[i]->GetTransform()->GetRotation())));
-			char rotLabel[] = { 'R', 'o', 't', 'a', 't', 'i', 'o', 'n', ' ', (char)(i + 65), '\0' };
+			XMStoreFloat3(&rot, XMVector3Normalize(XMVector3Rotate(XMVectorSet(0, 0, 1, 0), XMLoadFloat4(cameras[i]->GetTransform()->GetRotation()))));
+			char rotLabel[] = { 'D', 'i', 'r', 'e', 'c', 't', 'i', 'o', 'n', ' ', (char)(i + 65), '\0' };
 			ImGui::DragFloat3(rotLabel, &rot.x);
+			*/
+			XMFLOAT3 fwd = *cameras[i]->GetTransform()->GetForward();
+			char fwdLabel[] = { 'F', 'o', 'r', 'e', 'w', 'a', 'r', 'd', ' ', (char)(i + 65), '\0' };
+			ImGui::DragFloat3(fwdLabel, &fwd.x);
 
+			XMFLOAT3 rgt = *cameras[i]->GetTransform()->GetRight();
+			char rgtLabel[] = { 'R', 'i', 'g', 'h', 't', ' ', (char)(i + 65), '\0' };
+			ImGui::DragFloat3(rgtLabel, &rgt.x);
+
+			ImGui::Text("Pitch: %f", cameras[i]->GetTransform()->GetPitch());
+			ImGui::Text("Yaw: %f", cameras[i]->GetTransform()->GetYaw());
+
+			/*
 			XMFLOAT4 quat = *cameras[i]->GetTransform()->GetRotation();
 			char quatLabel[] = { 'Q', 'u', 'a', 't', 'e', 'r', 'n', 'i', 'o', 'n', ' ', (char)(i + 65), '\0' };
-			ImGui::DragFloat4(quatLabel, &quat.x);
+			ImGui::DragFloat4(quatLabel, &quat.x);*/
 		}
 	}
 

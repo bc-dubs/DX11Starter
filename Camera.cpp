@@ -47,14 +47,15 @@ void Camera::Update(float dt)
 {
 	Input& input = Input::GetInstance();
 	int sprintSpeed = 1;
+	int handedness = leftHanded ? 1 : -1;
 
 	// Keyboard data
 	if (input.KeyDown(VK_SHIFT)) { sprintSpeed = 2; }; // When shift is held down, forward/back speed is doubled
 
 	if (input.KeyDown('W')) { transform->LocalMoveBy(XMFLOAT3(0, 0, dt * moveSpeed * sprintSpeed)); }
 	if (input.KeyDown('S')) { transform->LocalMoveBy(XMFLOAT3(0, 0, -dt * moveSpeed * sprintSpeed)); }
-	if (input.KeyDown('A')) { transform->LocalMoveBy(XMFLOAT3(dt * moveSpeed, 0, 0)); }
-	if (input.KeyDown('D')) { transform->LocalMoveBy(XMFLOAT3(-dt * moveSpeed, 0, 0)); }
+	if (input.KeyDown('A')) { transform->LocalMoveBy(XMFLOAT3(- dt * moveSpeed * handedness, 0, 0)); }
+	if (input.KeyDown('D')) { transform->LocalMoveBy(XMFLOAT3(dt * moveSpeed * handedness, 0, 0)); }
 
 	if (input.KeyDown(VK_SPACE)) { transform->MoveBy(XMFLOAT3(0, dt * moveSpeed, 0)); }
 	if (input.KeyDown('X')) { transform->MoveBy(XMFLOAT3(0, -dt * moveSpeed, 0)); }
@@ -66,11 +67,12 @@ void Camera::Update(float dt)
 		int cursorMovementX = input.GetMouseXDelta();
 		int cursorMovementY = input.GetMouseYDelta();
 
-		float maxPitch = XM_PIDIV2 - asin(transform->GetRotation()->y);
-		float minPitch = -XM_PIDIV2 - asin(transform->GetRotation()->y);
-		transform->RotateBy(min(max(minPitch, cursorMovementY), maxPitch) * mouseLookSpeed, cursorMovementX * mouseLookSpeed, 0);
-		
+		float maxPitch = XM_PIDIV2 - FLT_EPSILON;
+		float minPitch = -XM_PIDIV2 + FLT_EPSILON;
+		transform->SetRotation(min(max(minPitch, transform->GetPitch() + cursorMovementY * mouseLookSpeed), maxPitch), transform->GetYaw() + cursorMovementX * mouseLookSpeed * handedness, 0);
 	}
+
+	if (input.KeyDown('P')) { transform->SetRotation(XMFLOAT3(0, 0, 0)); }
 
 	UpdateViewMatrix();
 }

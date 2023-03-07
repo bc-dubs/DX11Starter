@@ -23,6 +23,8 @@ public:
 	DirectX::XMFLOAT3* GetRight();
 	DirectX::XMFLOAT3* GetUp();
 	DirectX::XMFLOAT3* GetForward();
+	float GetPitch();
+	float GetYaw();
 
 	// Setters
 	void SetPosition(DirectX::XMFLOAT3 newPos);
@@ -48,10 +50,13 @@ private:
 	DirectX::XMFLOAT3 position;
 	DirectX::XMFLOAT4 rotation;
 	DirectX::XMFLOAT3 scale;
+	
 	DirectX::XMFLOAT3 right;
 	DirectX::XMFLOAT3 up;
 	DirectX::XMFLOAT3 forward;
 
+	float pitch;
+	float yaw;
 
 	DirectX::XMFLOAT4X4 worldMatrix;
 	DirectX::XMFLOAT4X4 worldInverseTransposeMatrix;

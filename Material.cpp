@@ -6,6 +6,8 @@ Material::Material(DirectX::XMFLOAT4 tint, std::shared_ptr<SimpleVertexShader> v
     pixelShader(pixelShader)
 {
     SetRoughness(roughness);
+    textureSRVs = std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>>();
+    samplers = std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D11SamplerState>>();
 }
 
 Material::~Material()
@@ -45,10 +47,29 @@ void Material::SetVertexShader(std::shared_ptr<SimpleVertexShader> newVertexShad
 void Material::SetPixelShader(std::shared_ptr<SimplePixelShader> newPixelShader)
 {
     pixelShader = newPixelShader;
-
 }
 
 void Material::SetRoughness(float newRoughness)
 {
     roughness = max(0.0, min(newRoughness, 1.0));
+}
+
+void Material::AddTextureSRV(std::string srvName, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv)
+{
+    textureSRVs.insert({ srvName, srv });
+}
+
+void Material::AddSampler(std::string samplerName, Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler)
+{
+    samplers.insert({ samplerName, sampler });
+}
+
+void Material::BindMaterial()
+{
+    for (auto& srv : textureSRVs) {
+        pixelShader->SetShaderResourceView(srv.first.c_str(), srv.second);
+    }
+    for (auto& sampler : samplers) {
+        pixelShader->SetSamplerState(sampler.first.c_str(), sampler.second);
+    }
 }

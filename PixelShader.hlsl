@@ -14,6 +14,10 @@ cbuffer ExternalData : register(b0) {
 	int yFunction;			// Unused in this shader
 }
 
+Texture2D SurfaceTexture : register(t0);	// "t" registers for textures
+Texture2D SpecularTexture : register(t1);	// "t" registers for textures
+SamplerState BasicSampler : register(s0);	// "s" registers for samplers
+
 // --------------------------------------------------------
 // The entry point (main method) for our pixel shader
 // - Input is the data coming down the pipeline (defined by the struct)
@@ -23,6 +27,11 @@ cbuffer ExternalData : register(b0) {
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
 {
+	// Texture code
+	float3 pixelColor = SurfaceTexture.Sample(BasicSampler, input.uv).rgb;
+	float pixelSpecular = SpecularTexture.Sample(BasicSampler, input.uv).r;
+
+	// Lighting code
 	input.normal = normalize(input.normal);
 	float3 viewVector = normalize(cameraPos - input.worldPosition);
 
@@ -39,8 +48,8 @@ float4 main(VertexToPixel input) : SV_TARGET
 		}
 
 		diffuse += CalculateDiffuse(lights[i], input.normal, lightDirection) * attenuation;
-		specular += CalculateSpecular(lights[i], input.normal, viewVector, roughness, lightDirection) * attenuation;
+		specular += CalculateSpecular(lights[i], input.normal, viewVector, roughness, lightDirection) * attenuation * pixelSpecular;
 	}
 	
-	return float4((ambient + diffuse + specular) * colorTint, 1);
+	return float4((ambient + diffuse + specular) * colorTint * pixelColor, 1);
 }

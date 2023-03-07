@@ -21,8 +21,7 @@ Transform::Transform(DirectX::XMFLOAT3 position, DirectX::XMFLOAT4 rotation, Dir
 Transform::Transform(DirectX::XMFLOAT3 position, DirectX::XMFLOAT3 pitchYawRoll, DirectX::XMFLOAT3 scale)
     : Transform(position, XMFLOAT4(0, 0, 0, 0), scale)
 {
-    XMStoreFloat4(&rotation, XMQuaternionRotationRollPitchYawFromVector(XMLoadFloat3(&pitchYawRoll)));
-    transformAltered = true;
+    SetRotation(pitchYawRoll);
     UpdateRotation();
 }
 
@@ -83,6 +82,14 @@ DirectX::XMFLOAT3* Transform::GetForward()
         UpdateRotation();
 
     return &forward;
+}
+float Transform::GetPitch()
+{
+    return pitch;
+}
+float Transform::GetYaw()
+{
+    return yaw;
 }
 #pragma endregion
 
@@ -219,6 +226,8 @@ void Transform::UpdateRotation()
     XMStoreFloat3(&up, XMVector3Normalize(XMVector3Rotate(XMVectorSet(0, 1, 0, 0), XMLoadFloat4(&rotation))));
     XMStoreFloat3(&forward, XMVector3Normalize(XMVector3Rotate(XMVectorSet(0, 0, 1, 0), XMLoadFloat4(&rotation))));
 
+    XMStoreFloat(&yaw, XMVector3AngleBetweenVectors(XMVectorSet(0, 0, 1, 0), XMVectorSet(forward.x, 0, forward.z, 0)) * copysignf(1, forward.x));
+    XMStoreFloat(&pitch, XMVector3AngleBetweenVectors(XMVectorSet(sinf(yaw), 0, cosf(yaw), 0), XMLoadFloat3(&forward)) * copysignf(1, -forward.y));
 
     rotationAltered = false;
 }

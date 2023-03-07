@@ -7,7 +7,7 @@
 class Camera
 {
 public:
-	Camera(float aspectRatio, DirectX::XMFLOAT3 position, DirectX::XMFLOAT4 orientation = DirectX::XMFLOAT4(0, 0, 1, 0), float fov = DirectX::XM_PIDIV2, float moveSpeed = 2, float mouseLookSpeed = 0.01, float nearClipDist = 0.01, float farClipDist = 1000, bool leftHanded = true, DirectX::XMFLOAT3 worldUp = DirectX::XMFLOAT3(0, 1, 0));
+	Camera(float aspectRatio, DirectX::XMFLOAT3 position, DirectX::XMFLOAT4 orientation = DirectX::XMFLOAT4(0, 0, 0, 1), float fov = DirectX::XM_PIDIV2, float moveSpeed = 2, float mouseLookSpeed = 0.01, float nearClipDist = 0.01, float farClipDist = 1000, bool leftHanded = true, DirectX::XMFLOAT3 worldUp = DirectX::XMFLOAT3(0, 1, 0));
 	~Camera();
 
 	// Getters
@@ -34,6 +34,9 @@ private:
 
 	bool leftHanded;			// Does this camera use a left-handed view?
 	DirectX::XMFLOAT3 worldUp;	// Which direction is up?
+
+	float pitch;
+	float yaw;
 	
 	void UpdateViewMatrix(); 
 };
