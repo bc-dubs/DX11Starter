@@ -71,6 +71,9 @@
     <ClCompile Include="Material.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Sky.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DXCore.h">
@@ -133,6 +136,9 @@
     <ClInclude Include="Lights.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Sky.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="PixelShader.hlsl">
@@ -142,6 +148,18 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="SpecialPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="VertexShader_NormalMap.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="PixelShader_NormalMap.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="VertexShader_Sky.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="PixelShader_Sky.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

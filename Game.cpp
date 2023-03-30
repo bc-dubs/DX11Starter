@@ -151,6 +151,8 @@ void Game::LoadShaders()
 	vertexShader = std::make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader.cso").c_str());
 	pixelShader = std::make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader.cso").c_str());
 	specialPixelShader = std::make_shared<SimplePixelShader>(device, context, FixPath(L"SpecialPixelShader.cso").c_str());
+	vertexShader_NormalMap = std::make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader_NormalMap.cso").c_str());
+	pixelShader_NormalMap = std::make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader_NormalMap.cso").c_str());
 
 	// Below variables are only used in the specialPixelShader
 	specialShaderFuncs = std::vector<int>();
@@ -177,10 +179,14 @@ void Game::CreateGeometry()
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> tileSpecularSRV;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> metalSRV;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> metalSpecularSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> rocksSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> rocksNormalSRV;
 	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\tiles_diffuse.png").c_str(), nullptr, tileSRV.GetAddressOf());
 	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\tiles_specular.png").c_str(), nullptr, tileSpecularSRV.GetAddressOf());
 	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\rustymetal_diffuse.png").c_str(), nullptr, metalSRV.GetAddressOf());
 	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\rustymetal_specular.png").c_str(), nullptr, metalSpecularSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\rock.png").c_str(), nullptr, rocksSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\rock_normals.png").c_str(), nullptr, rocksNormalSRV.GetAddressOf());
 
 
 	Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
@@ -202,20 +208,25 @@ void Game::CreateGeometry()
 	XMFLOAT4 green	= XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
 	XMFLOAT4 blue	= XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
 	XMFLOAT4 gold	= XMFLOAT4(1.0f, 0.84f, 0.0f, 1.0f);
+	XMFLOAT4 white	= XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	// Creating materials
-	std::shared_ptr<Material> redMaterial = std::make_shared<Material>(red, vertexShader, pixelShader, 0.9f);
-	std::shared_ptr<Material> greenMaterial = std::make_shared<Material>(green, vertexShader, pixelShader, 0.1f);
-	std::shared_ptr<Material> goldMaterial = std::make_shared<Material>(gold, vertexShader, pixelShader, 0.5f);
-	std::shared_ptr<Material> whiteMaterial = std::make_shared<Material>(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), vertexShader, pixelShader, 0.5f);
+	
+	std::shared_ptr<Material> tilesWithSpecular = std::make_shared<Material>(white, vertexShader, pixelShader, 0.5f);
+	std::shared_ptr<Material> metalWithSpecular = std::make_shared<Material>(white, vertexShader, pixelShader, 0.2f);
+	std::shared_ptr<Material> rocksWithNormals = std::make_shared<Material>(gold, vertexShader_NormalMap, pixelShader_NormalMap, 0.9f);
 
-	whiteMaterial->AddTextureSRV("SurfaceTexture", tileSRV);
-	whiteMaterial->AddTextureSRV("SpecularTexture", tileSpecularSRV);
-	whiteMaterial->AddSampler("BasicSampler", sampler);
+	tilesWithSpecular->AddTextureSRV("SurfaceTexture", tileSRV);
+	tilesWithSpecular->AddTextureSRV("SpecularTexture", tileSpecularSRV);
+	tilesWithSpecular->AddSampler("BasicSampler", sampler);
 
-	redMaterial->AddTextureSRV("SurfaceTexture", metalSRV);
-	whiteMaterial->AddTextureSRV("SpecularTexture", metalSpecularSRV);
-	redMaterial->AddSampler("BasicSampler", sampler);
+	metalWithSpecular->AddTextureSRV("SurfaceTexture", metalSRV);
+	metalWithSpecular->AddTextureSRV("SpecularTexture", metalSpecularSRV);
+	metalWithSpecular->AddSampler("BasicSampler", sampler);
+
+	rocksWithNormals->AddTextureSRV("SurfaceTexture", rocksSRV);
+	rocksWithNormals->AddTextureSRV("NormalMap", rocksNormalSRV);
+	rocksWithNormals->AddSampler("BasicSampler", sampler);
 
 	// Creating pointers to each mesh object
 	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\cube.obj").c_str(), device);
@@ -224,11 +235,11 @@ void Game::CreateGeometry()
 
 	// Creating entity objects
 	entities = std::vector<std::shared_ptr<Entity>>();
-	entities.push_back(std::make_shared<Entity>(torusMesh, redMaterial));
-	entities.push_back(std::make_shared<Entity>(cubeMesh, whiteMaterial));
-	entities.push_back(std::make_shared<Entity>(sphereMesh, whiteMaterial));
-	entities.push_back(std::make_shared<Entity>(torusMesh, whiteMaterial));
-	entities.push_back(std::make_shared<Entity>(torusMesh, whiteMaterial));
+	entities.push_back(std::make_shared<Entity>(torusMesh, metalWithSpecular));
+	entities.push_back(std::make_shared<Entity>(cubeMesh, tilesWithSpecular));
+	entities.push_back(std::make_shared<Entity>(sphereMesh, rocksWithNormals));
+	entities.push_back(std::make_shared<Entity>(torusMesh, tilesWithSpecular));
+	entities.push_back(std::make_shared<Entity>(cubeMesh, rocksWithNormals));
 
 	// Doing initial entity transformations
 	entities[0]->GetTransform()->MoveBy(-4.0f, 0.0f, 0.0f);
@@ -238,6 +249,9 @@ void Game::CreateGeometry()
 	entities[2]->GetTransform()->MoveBy(4.0f, 0.0f, 0.0f);
 	entities[3]->GetTransform()->MoveBy(-4.0f, -2.0f, 0.0f);
 	entities[4]->GetTransform()->MoveBy(-4.0f, 2.0f, 0.0f);
+
+	// Create sky
+	skybox = make_shared<Sky>(cubeMesh, sampler, device, context, FixPath(L"..\\..\\Assets\\Textures\\Sky_Pink").c_str(), FixPath(L"VertexShader_Sky.cso").c_str(), FixPath(L"PixelShader_Sky.cso").c_str());
 }
 
 
@@ -311,10 +325,14 @@ void Game::Draw(float deltaTime, float totalTime)
 		ps->SetFloat3("cameraPos", *cameras[cameraIndex]->GetTransform()->GetPosition());
 		ps->SetFloat("roughness", material->GetRoughness());
 		ps->SetData("lights", &lights[0], sizeof(Light) * (int)lights.size());
-		ps->SetFloat4("functionVars", XMFLOAT4(specialShaderVars[0], specialShaderVars[1], specialShaderVars[2], specialShaderVars[3]));
 		ps->SetFloat3("ambient", XMFLOAT3(ambientColor.x, ambientColor.y, ambientColor.z));
-		ps->SetInt("xFunction", specialShaderFuncs[0] * 4 + specialShaderFuncs[1]);
-		ps->SetInt("yFunction", specialShaderFuncs[2] * 4 + specialShaderFuncs[3]);
+
+		// If the shader is using vector field functions
+		if (ps->HasVariable("functionVars")) {
+			ps->SetFloat4("functionVars", XMFLOAT4(specialShaderVars[0], specialShaderVars[1], specialShaderVars[2], specialShaderVars[3]));
+			ps->SetInt("xFunction", specialShaderFuncs[0] * 4 + specialShaderFuncs[1]);
+			ps->SetInt("yFunction", specialShaderFuncs[2] * 4 + specialShaderFuncs[3]);
+		}
 
 		material->BindMaterial();
 		ps->CopyAllBufferData();
@@ -326,6 +344,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		entity->GetMesh()->Draw(context);
 	}
 	
+	skybox->Draw(cameras[cameraIndex]);
 
 	// Frame END
 	// - These should happen exactly ONCE PER FRAME

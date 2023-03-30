@@ -1,14 +1,16 @@
 #pragma once
 
 #include "DXCore.h"
+#include "SimpleShader.h"
 #include "Entity.h"
 #include "Camera.h"
-#include "SimpleShader.h"
+#include "Lights.h"
+#include "Sky.h"
+
 #include <memory>
 #include <DirectXMath.h>
 #include <wrl/client.h> // Used for ComPtr - a smart pointer for COM objects
 #include <vector>
-#include "Lights.h"
 
 class Game 
 	: public DXCore
@@ -43,11 +45,14 @@ private:
 	std::shared_ptr<SimplePixelShader> pixelShader;
 	std::shared_ptr<SimplePixelShader> specialPixelShader;
 	std::shared_ptr<SimpleVertexShader> vertexShader;
+	std::shared_ptr<SimpleVertexShader> vertexShader_NormalMap;
+	std::shared_ptr<SimplePixelShader> pixelShader_NormalMap;
 	std::vector<int> specialShaderFuncs;
 	std::vector<float> specialShaderVars;
 
 	// A list of objects to draw on-screen
 	std::vector<std::shared_ptr<Entity>> entities;
+	std::shared_ptr<Sky> skybox;
 	DirectX::XMFLOAT4 ambientColor;
 	
 	// A list of cameras

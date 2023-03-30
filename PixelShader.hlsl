@@ -8,10 +8,7 @@ cbuffer ExternalData : register(b0) {
 	float3 cameraPos;		// The position of the current camera in world space
 	float roughness;		// Specular constant based on mesh material
 	Light lights[NUM_LIGHTS];
-	float4 functionVars;	// Unused in this shader
 	float3 ambient;			// Scene-wide ambient light constant
-	int xFunction;			// Unused in this shader
-	int yFunction;			// Unused in this shader
 }
 
 Texture2D SurfaceTexture : register(t0);	// "t" registers for textures
@@ -51,5 +48,5 @@ float4 main(VertexToPixel input) : SV_TARGET
 		specular += CalculateSpecular(lights[i], input.normal, viewVector, roughness, lightDirection) * attenuation * pixelSpecular;
 	}
 	
-	return float4((ambient + diffuse + specular) * colorTint * pixelColor, 1);
+	return float4((ambient + diffuse + specular) * colorTint.rgb * pixelColor, 1);
 }

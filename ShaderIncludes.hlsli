@@ -12,6 +12,7 @@ struct VertexShaderInput
 {
 	float3 localPosition	: POSITION;     // XYZ position
 	float3 normal			: NORMAL;       // XYZ normal
+	float3 tangent			: TANGENT;		// XYZ tangent in U direction
 	float2 uv				: TEXCOORD;		// UV position
 };
 
@@ -23,6 +24,23 @@ struct VertexToPixel
 	float3 normal			: NORMAL;		// Surface normal
 	float3 worldPosition	: POSITION;		// Position in world space
 	float2 uv				: TEXCOORD;     // UV position
+};
+
+// Struct representing the data sent between shaders that account for normal maps
+struct VertexToPixel_NormalMap
+{
+	float4 screenPosition	: SV_POSITION;	// XYZW position (System Value Position)
+	float3 normal			: NORMAL;		// Surface normal
+	float3 tangent			: TANGENT;		// Surface tangent
+	float3 worldPosition	: POSITION;		// Position in world space
+	float2 uv				: TEXCOORD;     // UV position
+};
+
+// Struct representing the data sent between sky shaders
+struct VertexToPixel_Sky
+{
+	float4 position			: SV_POSITION;	// XYZW position (System Value Position)
+	float3 sampleDir		: DIRECTION;	// XYZ direction from origin
 };
 
 // =========================================
