@@ -60,6 +60,8 @@ private:
 	int cameraIndex;
 
 	// A list of lights
-	std::vector<Light> lights;
+	std::unordered_map<int, std::shared_ptr<Light>> activeLights;
+	std::vector<Light> lightsToRender;
+	std::vector<std::shared_ptr<Light>> allLights;
 };
 

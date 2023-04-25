@@ -31,7 +31,7 @@ float4 main(VertexToPixel_NormalMap input) : SV_TARGET
 	input.normal = mul(textureNormal, TBN);
 
 	// Texture code
-	float3 pixelColor = SurfaceTexture.Sample(BasicSampler, input.uv).rgb;
+	float3 pixelColor = pow(SurfaceTexture.Sample(BasicSampler, input.uv).rgb, 2.2f);
 	//float pixelSpecular = SpecularTexture.Sample(BasicSampler, input.uv).r;
 	float pixelSpecular = 0.5f;
 
@@ -55,5 +55,8 @@ float4 main(VertexToPixel_NormalMap input) : SV_TARGET
 		specular += CalculateSpecular(lights[i], input.normal, viewVector, roughness, lightDirection) * attenuation * pixelSpecular;
 	}
 
-	return float4((ambient + diffuse + specular * any(diffuse)) * colorTint.rgb * pixelColor, 1);
+	float3 totalColor = (ambient + diffuse + specular * any(diffuse)) * colorTint.rgb * pixelColor;
+
+	// Gamma correcting and returning
+	return float4(pow(totalColor, 1 / 2.2f), 1);
 }

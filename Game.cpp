@@ -84,14 +84,16 @@ void Game::Init()
 	cameras.push_back(std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, -10), XMFLOAT4(0, 0, 0, 1), XM_PIDIV4, 5, 0.001f, 0.01f, 50, false, XMFLOAT3(0.4f, 0.6f, 0))));
 
 	// Create lights
-	lights = vector<Light>();
+	allLights = vector<shared_ptr<Light>>();
+	activeLights = unordered_map<int, shared_ptr<Light>>();
 	{
 		Light directionalLight = {};
 		directionalLight.Type = LIGHT_TYPE_DIRECTIONAL;
 		directionalLight.Direction = XMFLOAT3(-1, -1, 0.1f);
 		directionalLight.Color = XMFLOAT3(1.0f, 0.3f, 0.3f);
 		directionalLight.Intensity = 1.0f;
-		lights.push_back(directionalLight);
+		allLights.push_back(make_shared<Light>(directionalLight));
+		activeLights.insert({ 0, allLights[0]});
 	}
 	{
 		Light directionalLight = {};
@@ -99,7 +101,7 @@ void Game::Init()
 		directionalLight.Direction = XMFLOAT3(0, 0, -1);
 		directionalLight.Color = XMFLOAT3(0.2f, 0.2f, 5.0f);
 		directionalLight.Intensity = 0.5f;
-		lights.push_back(directionalLight);
+		allLights.push_back(make_shared<Light>(directionalLight));
 	}
 	{
 		Light directionalLight = {};
@@ -107,7 +109,7 @@ void Game::Init()
 		directionalLight.Direction = XMFLOAT3(1, -1, -0.1f);
 		directionalLight.Color = XMFLOAT3(0.5f, 0.15f, 0.15f);
 		directionalLight.Intensity = 1.0f;
-		lights.push_back(directionalLight);
+		allLights.push_back(make_shared<Light>(directionalLight));
 	}
 	// Point lights
 	{
@@ -117,7 +119,7 @@ void Game::Init()
 		pointLight.Range = 4.0f;
 		pointLight.Color = XMFLOAT3(0.5f, 0.5f, 0.0f);
 		pointLight.Intensity = 1.0f;
-		lights.push_back(pointLight);
+		allLights.push_back(make_shared<Light>(pointLight));
 	}
 	{
 		Light pointLight = {};
@@ -126,7 +128,12 @@ void Game::Init()
 		pointLight.Range = 10.0f;
 		pointLight.Color = XMFLOAT3(1.0f, 0.0f, 1.0f);
 		pointLight.Intensity = 0.5f;
-		lights.push_back(pointLight);
+		allLights.push_back(make_shared<Light>(pointLight));
+	}
+
+	lightsToRender = vector<Light>();
+	for (auto& light : activeLights) {
+		lightsToRender.push_back(*light.second);
 	}
 
 	// Initialize ImGui itself & platform/renderer backends
@@ -214,7 +221,7 @@ void Game::CreateGeometry()
 	
 	std::shared_ptr<Material> tilesWithSpecular = std::make_shared<Material>(white, vertexShader, pixelShader, 0.5f);
 	std::shared_ptr<Material> metalWithSpecular = std::make_shared<Material>(white, vertexShader, pixelShader, 0.2f);
-	std::shared_ptr<Material> rocksWithNormals = std::make_shared<Material>(gold, vertexShader_NormalMap, pixelShader_NormalMap, 0.9f);
+	std::shared_ptr<Material> rocksWithNormals = std::make_shared<Material>(white, vertexShader_NormalMap, pixelShader_NormalMap, 0.9f);
 
 	tilesWithSpecular->AddTextureSRV("SurfaceTexture", tileSRV);
 	tilesWithSpecular->AddTextureSRV("SpecularTexture", tileSpecularSRV);
@@ -241,14 +248,27 @@ void Game::CreateGeometry()
 	entities.push_back(std::make_shared<Entity>(torusMesh, tilesWithSpecular));
 	entities.push_back(std::make_shared<Entity>(cubeMesh, rocksWithNormals));
 
-	// Doing initial entity transformations
-	entities[0]->GetTransform()->MoveBy(-4.0f, 0.0f, 0.0f);
+	// Arranging entities regularly
+	{
+		int numCols = 4;
+		float colSpacing = 3.5f;
+		float rowSpacing = 3.2f;
+		for (unsigned int i = 0; i < entities.size(); i++) {
+			std::shared_ptr<Entity> entity = entities[i];
+			float colIndex = (i % numCols) - numCols / 2.0f;
+			float rowIndex = i / numCols - (entities.size() / numCols) / 2.0f; // Offsets to center arrangement on approximately 0, 0
+			entity->GetTransform()->MoveBy(colIndex * colSpacing, -rowIndex * rowSpacing, 0);
+		}
+	}
+
+	// Old entity transformations
+	/*entities[0]->GetTransform()->MoveBy(-4.0f, 0.0f, 0.0f);
 	entities[0]->GetTransform()->ScaleBy(0.5f, 0.5f, 0.5f);
 	entities[1]->GetTransform()->MoveBy(0.0f, 0.2f, 0.0f);
 	entities[1]->GetTransform()->ScaleBy(2.0f, 2.0f, 2.0f);
 	entities[2]->GetTransform()->MoveBy(4.0f, 0.0f, 0.0f);
 	entities[3]->GetTransform()->MoveBy(-4.0f, -2.0f, 0.0f);
-	entities[4]->GetTransform()->MoveBy(-4.0f, 2.0f, 0.0f);
+	entities[4]->GetTransform()->MoveBy(-4.0f, 2.0f, 0.0f);*/
 
 	// Create sky
 	skybox = make_shared<Sky>(cubeMesh, sampler, device, context, FixPath(L"..\\..\\Assets\\Textures\\Sky_Pink").c_str(), FixPath(L"VertexShader_Sky.cso").c_str(), FixPath(L"PixelShader_Sky.cso").c_str());
@@ -275,13 +295,10 @@ void Game::OnResize()
 void Game::Update(float deltaTime, float totalTime)
 {
 	UpdateImGui(deltaTime, totalTime);
-
-	entities[0]->GetTransform()->MoveBy(deltaTime * 0.25f * (float) sin(totalTime), deltaTime * 0.25f * (float) cos(totalTime), 0.0f);
-	//entities[1]->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
-	//entities[2].GetTransform()->ScaleBy(1.1 - sin(totalTime), 1.1 - sin(totalTime), 1.1 - sin(totalTime));
-	entities[2]->GetTransform()->ScaleBy(1 + deltaTime * 0.25f * (float) sin(totalTime), 1.0f, 1.0f);
-	entities[3]->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime);
-	entities[4]->GetTransform()->RotateBy(0.0f, 0.0f, -deltaTime);
+	for (unsigned int i = 0; i < entities.size(); i++) {
+		std::shared_ptr<Entity> entity = entities[i];
+		entity->GetTransform()->RotateBy(0.0f, deltaTime/4, 0.0f);
+	}
 
 	cameras[cameraIndex]->Update(deltaTime);
 
@@ -324,7 +341,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		ps->SetFloat4("colorTint", material->GetTint());
 		ps->SetFloat3("cameraPos", *cameras[cameraIndex]->GetTransform()->GetPosition());
 		ps->SetFloat("roughness", material->GetRoughness());
-		ps->SetData("lights", &lights[0], sizeof(Light) * (int)lights.size());
+		ps->SetData("lights", &lightsToRender[0], sizeof(Light) * (int)lightsToRender.size());
 		ps->SetFloat3("ambient", XMFLOAT3(ambientColor.x, ambientColor.y, ambientColor.z));
 
 		// If the shader is using vector field functions
@@ -449,11 +466,11 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 	}
 
 	// Vector field shader GUI
+	const char* xFunctions[] = { "x", "x^2", "x^(1/2)", "2^x", "ln(x)/ln(2)", "sin(x)", "cos(x)", "tan(x)" };
+	const char* yFunctions[] = { "y", "y^2", "y^(1/2)", "2^y", "ln(y)/ln(2)", "sin(y)", "cos(y)", "tan(y)" };
+	const char* xInputs[] = { "x", "y", "x+y", "x-y" };
+	const char* yInputs[] = { "y", "x", "y+x", "y-x" };
 	if (ImGui::CollapsingHeader("Vector Field Functions")) {
-		const char* xFunctions[] = { "x", "x^2", "x^(1/2)", "2^x", "ln(x)/ln(2)", "sin(x)", "cos(x)", "tan(x)" };
-		const char* yFunctions[] = { "y", "y^2", "y^(1/2)", "2^y", "ln(y)/ln(2)", "sin(y)", "cos(y)", "tan(y)" };
-		const char* xInputs[] = { "x", "y", "x+y", "x-y" };
-		const char* yInputs[] = { "y", "x", "y+x", "y-x" };
 		ImGui::Combo("X Function", &specialShaderFuncs[0], xFunctions, IM_ARRAYSIZE(xFunctions), 5);
 		ImGui::Combo("X Input", &specialShaderFuncs[1], xInputs, IM_ARRAYSIZE(xInputs), 4);
 		ImGui::InputFloat("X coefficient", &specialShaderVars[0], 0.1f, 1.0f, "% .2f");
@@ -467,11 +484,32 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 	}
 
 	// Lighting GUI
+	const char* lightTypes[] = { "Directional", "Point", "Spot" };
 	if (ImGui::CollapsingHeader("Lights")) {
-		for (unsigned int i = 0; i < lights.size(); i++) {
-			char lightLabel[] = { 'L', 'i', 'g', 'h', 't', ' ', (char)(i + 65), ' ', 'c', 'o', 'l', 'o', 'r', '\0' };
-			ImGui::ColorEdit3(lightLabel, &lights[i].Color.x);
+		for (unsigned int i = 0; i < allLights.size(); i++) {
+			if (ImGui::TreeNode((void*)(intptr_t)i, "Light %c (%s)", (char)(i + 65), lightTypes[allLights[i]->Type])) {
+				const bool wasActive = activeLights.count(i);
+				bool nowActive = wasActive;
+				ImGui::Checkbox("Active", &nowActive);
+				if (nowActive && !wasActive) {
+					activeLights.insert({ i, allLights[i] });
+				}
+				else if (!nowActive && wasActive && activeLights.size() > 1) {
+					activeLights.erase(i);
+				}
+
+				XMFLOAT3 lightColor = allLights[i]->Color;
+				ImGui::ColorEdit3("Color", &lightColor.x);
+				allLights[i]->Color = lightColor;
+
+
+				ImGui::TreePop();
+			}
 		}
+	}
+	lightsToRender = vector<Light>();
+	for (auto& light : activeLights) {
+		lightsToRender.push_back(*light.second);
 	}
 
 	ImGui::End();
