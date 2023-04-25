@@ -182,18 +182,35 @@ void Game::LoadShaders()
 // --------------------------------------------------------
 void Game::CreateGeometry()
 {
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> tileSRV;
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> tileSpecularSRV;
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> metalSRV;
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> metalSpecularSRV;
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> rocksSRV;
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> rocksNormalSRV;
-	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\tiles_diffuse.png").c_str(), nullptr, tileSRV.GetAddressOf());
-	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\tiles_specular.png").c_str(), nullptr, tileSpecularSRV.GetAddressOf());
-	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\rustymetal_diffuse.png").c_str(), nullptr, metalSRV.GetAddressOf());
-	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\rustymetal_specular.png").c_str(), nullptr, metalSpecularSRV.GetAddressOf());
-	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\rock.png").c_str(), nullptr, rocksSRV.GetAddressOf());
-	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\rock_normals.png").c_str(), nullptr, rocksNormalSRV.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> bronzeAlbedoSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> bronzeMetalnessSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> bronzeNormalSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> bronzeRoughnessSRV;
+
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\bronze_albedo.png").c_str(), nullptr, bronzeAlbedoSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\bronze_metal.png").c_str(), nullptr, bronzeMetalnessSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\bronze_normals.png").c_str(), nullptr, bronzeNormalSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\bronze_roughness.png").c_str(), nullptr, bronzeRoughnessSRV.GetAddressOf());
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> scratchedAlbedoSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> scratchedMetalnessSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> scratchedNormalSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> scratchedRoughnessSRV;
+
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\scratched_albedo.png").c_str(), nullptr, scratchedAlbedoSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\scratched_metal.png").c_str(), nullptr, scratchedMetalnessSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\scratched_normals.png").c_str(), nullptr, scratchedNormalSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\scratched_roughness.png").c_str(), nullptr, scratchedRoughnessSRV.GetAddressOf());
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> plateAlbedoSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> plateMetalnessSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> plateNormalSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> plateRoughnessSRV;
+
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\floor_albedo.png").c_str(), nullptr, plateAlbedoSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\floor_metal.png").c_str(), nullptr, plateMetalnessSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\floor_normals.png").c_str(), nullptr, plateNormalSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\floor_roughness.png").c_str(), nullptr, plateRoughnessSRV.GetAddressOf());
 
 
 	Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
@@ -218,22 +235,27 @@ void Game::CreateGeometry()
 	XMFLOAT4 white	= XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	// Creating materials
-	
-	std::shared_ptr<Material> tilesWithSpecular = std::make_shared<Material>(white, vertexShader, pixelShader, 0.5f);
-	std::shared_ptr<Material> metalWithSpecular = std::make_shared<Material>(white, vertexShader, pixelShader, 0.2f);
-	std::shared_ptr<Material> rocksWithNormals = std::make_shared<Material>(white, vertexShader_NormalMap, pixelShader_NormalMap, 0.9f);
+	std::shared_ptr<Material> bronze = std::make_shared<Material>(white, vertexShader_NormalMap, pixelShader_NormalMap, 0.1f);
+	std::shared_ptr<Material> scratched = std::make_shared<Material>(white, vertexShader_NormalMap, pixelShader_NormalMap, 0.6f);
+	std::shared_ptr<Material> plate = std::make_shared<Material>(white, vertexShader_NormalMap, pixelShader_NormalMap, 0.1f);
 
-	tilesWithSpecular->AddTextureSRV("SurfaceTexture", tileSRV);
-	tilesWithSpecular->AddTextureSRV("SpecularTexture", tileSpecularSRV);
-	tilesWithSpecular->AddSampler("BasicSampler", sampler);
+	bronze->AddTextureSRV("AlbedoTexture", bronzeAlbedoSRV);
+	bronze->AddTextureSRV("RoughnessMap", bronzeRoughnessSRV);
+	bronze->AddTextureSRV("NormalMap", bronzeNormalSRV);
+	bronze->AddTextureSRV("MetalnessMap", bronzeMetalnessSRV);
+	bronze->AddSampler("BasicSampler", sampler);
 
-	metalWithSpecular->AddTextureSRV("SurfaceTexture", metalSRV);
-	metalWithSpecular->AddTextureSRV("SpecularTexture", metalSpecularSRV);
-	metalWithSpecular->AddSampler("BasicSampler", sampler);
+	scratched->AddTextureSRV("AlbedoTexture", scratchedAlbedoSRV);
+	scratched->AddTextureSRV("RoughnessMap", scratchedRoughnessSRV);
+	scratched->AddTextureSRV("NormalMap", scratchedNormalSRV);
+	scratched->AddTextureSRV("MetalnessMap", scratchedMetalnessSRV);
+	scratched->AddSampler("BasicSampler", sampler);
 
-	rocksWithNormals->AddTextureSRV("SurfaceTexture", rocksSRV);
-	rocksWithNormals->AddTextureSRV("NormalMap", rocksNormalSRV);
-	rocksWithNormals->AddSampler("BasicSampler", sampler);
+	plate->AddTextureSRV("AlbedoTexture", plateAlbedoSRV);
+	plate->AddTextureSRV("RoughnessMap", plateRoughnessSRV);
+	plate->AddTextureSRV("NormalMap", plateNormalSRV);
+	plate->AddTextureSRV("MetalnessMap", plateMetalnessSRV);
+	plate->AddSampler("BasicSampler", sampler);
 
 	// Creating pointers to each mesh object
 	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\cube.obj").c_str(), device);
@@ -242,11 +264,11 @@ void Game::CreateGeometry()
 
 	// Creating entity objects
 	entities = std::vector<std::shared_ptr<Entity>>();
-	entities.push_back(std::make_shared<Entity>(torusMesh, metalWithSpecular));
-	entities.push_back(std::make_shared<Entity>(cubeMesh, tilesWithSpecular));
-	entities.push_back(std::make_shared<Entity>(sphereMesh, rocksWithNormals));
-	entities.push_back(std::make_shared<Entity>(torusMesh, tilesWithSpecular));
-	entities.push_back(std::make_shared<Entity>(cubeMesh, rocksWithNormals));
+	entities.push_back(std::make_shared<Entity>(torusMesh, bronze));
+	entities.push_back(std::make_shared<Entity>(cubeMesh, plate));
+	entities.push_back(std::make_shared<Entity>(sphereMesh, bronze));
+	entities.push_back(std::make_shared<Entity>(torusMesh, scratched));
+	entities.push_back(std::make_shared<Entity>(cubeMesh, scratched));
 
 	// Arranging entities regularly
 	{
@@ -340,9 +362,9 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		ps->SetFloat4("colorTint", material->GetTint());
 		ps->SetFloat3("cameraPos", *cameras[cameraIndex]->GetTransform()->GetPosition());
-		ps->SetFloat("roughness", material->GetRoughness());
+		ps->SetFloat("roughnessConstant", material->GetRoughness());
+		ps->SetInt("numLights", lightsToRender.size());
 		ps->SetData("lights", &lightsToRender[0], sizeof(Light) * (int)lightsToRender.size());
-		ps->SetFloat3("ambient", XMFLOAT3(ambientColor.x, ambientColor.y, ambientColor.z));
 
 		// If the shader is using vector field functions
 		if (ps->HasVariable("functionVars")) {

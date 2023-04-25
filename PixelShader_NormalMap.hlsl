@@ -1,18 +1,18 @@
 #include "ShaderIncludes.hlsli"
 
-#define NUM_LIGHTS 5
+#define MAX_LIGHTS 5
 
 cbuffer ExternalData : register(b0) {
 	float4 colorTint;
 	float3 cameraPos;		// The position of the current camera in world space
-	float roughness;		// Specular constant based on mesh material
-	Light lights[NUM_LIGHTS];
-	float3 ambient;			// Scene-wide ambient light constant
+	int numLights;			// Specular constant based on mesh material
+	Light lights[MAX_LIGHTS];
 }
 
-Texture2D SurfaceTexture	: register(t0);	// "t" registers for textures
-Texture2D SpecularTexture	: register(t1);	// "t" registers for textures
+Texture2D AlbedoTexture		: register(t0);	// "t" registers for textures
+Texture2D RoughnessMap		: register(t1);	// "t" registers for textures
 Texture2D NormalMap			: register(t2);
+Texture2D MetalnessMap		: register(t3);
 SamplerState BasicSampler	: register(s0);	// "s" registers for samplers
 
 
@@ -22,40 +22,39 @@ float4 main(VertexToPixel_NormalMap input) : SV_TARGET
 	float3 textureNormal = NormalMap.Sample(BasicSampler, input.uv).rgb * 2 - 1;
 	textureNormal = normalize(textureNormal);
 
-	float3 inputNormal = normalize(input.normal);
-	float3 inputTangent = normalize(input.tangent);
-	inputTangent = normalize(inputTangent - inputNormal * dot(inputTangent, inputNormal));
-	float3 inputBitangent = cross(inputTangent, inputNormal);
-	float3x3 TBN = float3x3(inputTangent, inputBitangent, inputNormal);
-
+	float3x3 TBN = CalculateTBN(normalize(input.normal), normalize(input.tangent));
 	input.normal = mul(textureNormal, TBN);
 
 	// Texture code
-	float3 pixelColor = pow(SurfaceTexture.Sample(BasicSampler, input.uv).rgb, 2.2f);
-	//float pixelSpecular = SpecularTexture.Sample(BasicSampler, input.uv).r;
-	float pixelSpecular = 0.5f;
+	float3 albedo = pow(AlbedoTexture.Sample(BasicSampler, input.uv).rgb, 2.2f) * colorTint.rgb; // un-gamma correcting
+	float roughness = RoughnessMap.Sample(BasicSampler, input.uv).r;
+	float metalness = MetalnessMap.Sample(BasicSampler, input.uv).r;
 
-	// Lighting code
-	input.normal = normalize(input.normal);
+	float3 fresnelAt0 = lerp(F0_NON_METAL, albedo.rgb, metalness); // Metals' f0 value is stored in albedo textures, nonmetals' is a constant
+
+	// Vector code
 	float3 viewVector = normalize(cameraPos - input.worldPosition);
 
-	float3 diffuse;
-	float3 specular;
+	float3 totalColor;
 
-	for (int i = 0; i < NUM_LIGHTS; i++) {
-
-		float3 lightDirection = lights[i].direction;
-		float attenuation = 1.0;
-		if (lights[i].type == 1) {
-			lightDirection = normalize(input.worldPosition - lights[i].position);
-			attenuation = Attenuate(lights[i], input.worldPosition);
+	// Using BRDFs
+	for (int i = 0; i < numLights; i++) {
+		float3 directionToLight = -lights[i].direction;
+		float intensity = lights[i].intensity;
+		if (lights[i].type == 1) { // Values for point lights
+			directionToLight = lights[i].position - input.worldPosition;
+			intensity *= Attenuate(lights[i], input.worldPosition);
 		}
+		directionToLight = normalize(directionToLight);
 
-		diffuse += CalculateDiffuse(lights[i], input.normal, lightDirection) * attenuation;
-		specular += CalculateSpecular(lights[i], input.normal, viewVector, roughness, lightDirection) * attenuation * pixelSpecular;
+		float3 diffuse = CalculateDiffuse(input.normal, directionToLight); // diffuse component for this pixel
+		float3 fresnel;
+		float3 specular = MicrofacetBRDF(input.normal, directionToLight, viewVector, roughness, fresnelAt0, fresnel); // specular component for this pixel
+		diffuse = DiffuseEnergyConserve(diffuse, fresnel, metalness);
+
+
+		totalColor += (diffuse * albedo + specular) * lights[i].intensity * lights[i].color;
 	}
-
-	float3 totalColor = (ambient + diffuse + specular * any(diffuse)) * colorTint.rgb * pixelColor;
 
 	// Gamma correcting and returning
 	return float4(pow(totalColor, 1 / 2.2f), 1);

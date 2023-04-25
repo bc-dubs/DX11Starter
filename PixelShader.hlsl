@@ -44,7 +44,7 @@ float4 main(VertexToPixel input) : SV_TARGET
 			attenuation = Attenuate(lights[i], input.worldPosition);
 		}
 
-		diffuse += CalculateDiffuse(lights[i], input.normal, lightDirection) * attenuation;
+		diffuse += CalculateDiffuse(input.normal, lightDirection) * attenuation;
 		specular += CalculateSpecular(lights[i], input.normal, viewVector, roughness, lightDirection) * attenuation * pixelSpecular;
 	}
 	
