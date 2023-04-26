@@ -136,6 +136,54 @@ void Game::Init()
 		lightsToRender.push_back(*light.second);
 	}
 
+	{
+		// Initialize resolution
+		shadowMapResolution = 512;
+		// Create the actual texture that will be the shadow map
+		D3D11_TEXTURE2D_DESC shadowDesc = {};
+		shadowDesc.Width = shadowMapResolution; // Ideally a power of 2 (like 1024)
+		shadowDesc.Height = shadowMapResolution; // Ideally a power of 2 (like 1024)
+		shadowDesc.ArraySize = 1;
+		shadowDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+		shadowDesc.CPUAccessFlags = 0;
+		shadowDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+		shadowDesc.MipLevels = 1;
+		shadowDesc.MiscFlags = 0;
+		shadowDesc.SampleDesc.Count = 1;
+		shadowDesc.SampleDesc.Quality = 0;
+		shadowDesc.Usage = D3D11_USAGE_DEFAULT;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D> shadowTexture;
+		device->CreateTexture2D(&shadowDesc, 0, shadowTexture.GetAddressOf());
+
+		
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilView> shadowDSV;
+		// Create the depth/stencil view
+		D3D11_DEPTH_STENCIL_VIEW_DESC shadowDSDesc = {};
+		shadowDSDesc.Format = DXGI_FORMAT_D32_FLOAT;
+		shadowDSDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+		shadowDSDesc.Texture2D.MipSlice = 0;
+		device->CreateDepthStencilView(
+			shadowTexture.Get(),
+			&shadowDSDesc,
+			shadowDSV.GetAddressOf());
+
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shadowSRV;
+		// Create the SRV for the shadow map
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		device->CreateShaderResourceView(
+			shadowTexture.Get(),
+			&srvDesc,
+			shadowSRV.GetAddressOf());
+	}
+
+	{
+
+	}
+
 	// Initialize ImGui itself & platform/renderer backends
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -212,6 +260,16 @@ void Game::CreateGeometry()
 	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\floor_normals.png").c_str(), nullptr, plateNormalSRV.GetAddressOf());
 	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\floor_roughness.png").c_str(), nullptr, plateRoughnessSRV.GetAddressOf());
 
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> woodAlbedoSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> woodMetalnessSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> woodNormalSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> woodRoughnessSRV;
+
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\wood_albedo.png").c_str(), nullptr, woodAlbedoSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\wood_metal.png").c_str(), nullptr, woodMetalnessSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\wood_normals.png").c_str(), nullptr, woodNormalSRV.GetAddressOf());
+	CreateWICTextureFromFile(device.Get(), context.Get(), FixPath(L"..\\..\\Assets\\Textures\\wood_roughness.png").c_str(), nullptr, woodRoughnessSRV.GetAddressOf());
+
 
 	Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
 
@@ -238,6 +296,7 @@ void Game::CreateGeometry()
 	std::shared_ptr<Material> bronze = std::make_shared<Material>(white, vertexShader_NormalMap, pixelShader_NormalMap, 0.1f);
 	std::shared_ptr<Material> scratched = std::make_shared<Material>(white, vertexShader_NormalMap, pixelShader_NormalMap, 0.6f);
 	std::shared_ptr<Material> plate = std::make_shared<Material>(white, vertexShader_NormalMap, pixelShader_NormalMap, 0.1f);
+	std::shared_ptr<Material> wood = std::make_shared<Material>(white, vertexShader_NormalMap, pixelShader_NormalMap, 0.6f);
 
 	bronze->AddTextureSRV("AlbedoTexture", bronzeAlbedoSRV);
 	bronze->AddTextureSRV("RoughnessMap", bronzeRoughnessSRV);
@@ -257,6 +316,12 @@ void Game::CreateGeometry()
 	plate->AddTextureSRV("MetalnessMap", plateMetalnessSRV);
 	plate->AddSampler("BasicSampler", sampler);
 
+	wood->AddTextureSRV("AlbedoTexture", woodAlbedoSRV);
+	wood->AddTextureSRV("RoughnessMap", woodRoughnessSRV);
+	wood->AddTextureSRV("NormalMap", woodNormalSRV);
+	wood->AddTextureSRV("MetalnessMap", woodMetalnessSRV);
+	wood->AddSampler("BasicSampler", sampler);
+
 	// Creating pointers to each mesh object
 	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\cube.obj").c_str(), device);
 	shared_ptr<Mesh> sphereMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\sphere.obj").c_str(), device);
@@ -264,6 +329,8 @@ void Game::CreateGeometry()
 
 	// Creating entity objects
 	entities = std::vector<std::shared_ptr<Entity>>();
+	entities.push_back(make_shared<Entity>(cubeMesh, wood));
+
 	entities.push_back(std::make_shared<Entity>(torusMesh, bronze));
 	entities.push_back(std::make_shared<Entity>(cubeMesh, plate));
 	entities.push_back(std::make_shared<Entity>(sphereMesh, bronze));
@@ -272,10 +339,10 @@ void Game::CreateGeometry()
 
 	// Arranging entities regularly
 	{
-		int numCols = 4;
+		int numCols = 5;
 		float colSpacing = 3.5f;
 		float rowSpacing = 3.2f;
-		for (unsigned int i = 0; i < entities.size(); i++) {
+		for (unsigned int i = 1; i < entities.size(); i++) {
 			std::shared_ptr<Entity> entity = entities[i];
 			float colIndex = (i % numCols) - numCols / 2.0f;
 			float rowIndex = i / numCols - (entities.size() / numCols) / 2.0f; // Offsets to center arrangement on approximately 0, 0
@@ -291,6 +358,10 @@ void Game::CreateGeometry()
 	entities[2]->GetTransform()->MoveBy(4.0f, 0.0f, 0.0f);
 	entities[3]->GetTransform()->MoveBy(-4.0f, -2.0f, 0.0f);
 	entities[4]->GetTransform()->MoveBy(-4.0f, 2.0f, 0.0f);*/
+
+	// Floor transformation
+	entities[0]->GetTransform()->MoveBy(0.0f, -10.0f, 0.0f);
+	entities[0]->GetTransform()->ScaleBy(40.0f, 1.0f, 40.0f);
 
 	// Create sky
 	skybox = make_shared<Sky>(cubeMesh, sampler, device, context, FixPath(L"..\\..\\Assets\\Textures\\Sky_Pink").c_str(), FixPath(L"VertexShader_Sky.cso").c_str(), FixPath(L"PixelShader_Sky.cso").c_str());
@@ -317,9 +388,10 @@ void Game::OnResize()
 void Game::Update(float deltaTime, float totalTime)
 {
 	UpdateImGui(deltaTime, totalTime);
-	for (unsigned int i = 0; i < entities.size(); i++) {
+	for (unsigned int i = 1; i < entities.size(); i++) {
 		std::shared_ptr<Entity> entity = entities[i];
-		entity->GetTransform()->RotateBy(0.0f, deltaTime/4, 0.0f);
+		//entity->GetTransform()->RotateBy(0.0f, deltaTime/4, 0.0f);
+		entity->GetTransform()->SetPosition(entity->GetTransform()->GetPosition()->x, sin(totalTime), entity->GetTransform()->GetPosition()->z);
 	}
 
 	cameras[cameraIndex]->Update(deltaTime);

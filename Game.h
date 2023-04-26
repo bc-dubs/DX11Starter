@@ -63,5 +63,13 @@ private:
 	std::unordered_map<int, std::shared_ptr<Light>> activeLights;
 	std::vector<Light> lightsToRender;
 	std::vector<std::shared_ptr<Light>> allLights;
+
+	// Shadow mapping variables
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> shadowDSV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shadowSRV;
+	int shadowMapResolution;
+	float lightDisplacement; // These refer to our main directional light
+	DirectX::XMFLOAT4X4 lightViewMatrix;
+	DirectX::XMFLOAT4X4 lightProjectionMatrix;
 };
 
