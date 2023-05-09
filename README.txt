@@ -1,0 +1,1 @@
+The option I chose is the simple box blur. It can be adjusted using a slider found under the "post processing" header in the ImGui menu

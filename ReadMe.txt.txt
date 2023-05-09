@@ -1,1 +1,0 @@
-I added the usage of a specular map. It is loaded from a separate file in Game.cpp and passed to PixelShader in a separate SRV, then applied there using the same sampler.

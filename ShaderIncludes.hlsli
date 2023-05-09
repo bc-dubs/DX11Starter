@@ -44,6 +44,14 @@ struct VertexToPixel_Sky
 	float3 sampleDir		: DIRECTION;	// XYZ direction from origin
 };
 
+// Struct representing the data sent between post-processing shaders
+struct VertexToPixel_Fullscreen
+{
+	float4 position : SV_POSITION;
+	float2 uv		: TEXCOORD0;
+};
+
+
 // =========================================
 // ============= LIGHTING CODE =============
 // =========================================

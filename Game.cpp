@@ -47,6 +47,7 @@ Game::Game(HINSTANCE hInstance)
 	lightDisplacement = 25;
 	lightViewMatrix = XMFLOAT4X4();
 	lightProjectionMatrix = XMFLOAT4X4();
+	blurRadius = 0;
 }
 
 // --------------------------------------------------------
@@ -141,79 +142,20 @@ void Game::Init()
 		lightsToRender.push_back(*light.second);
 	}
 
+	ShadowInit();
+
+	// Initialize blurring variables
 	{
-		// Create the actual texture that will be the shadow map
-		D3D11_TEXTURE2D_DESC shadowDesc = {};
-		shadowDesc.Width = shadowMapResolution; // Ideally a power of 2 (like 1024)
-		shadowDesc.Height = shadowMapResolution; // Ideally a power of 2 (like 1024)
-		shadowDesc.ArraySize = 1;
-		shadowDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
-		shadowDesc.CPUAccessFlags = 0;
-		shadowDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-		shadowDesc.MipLevels = 1;
-		shadowDesc.MiscFlags = 0;
-		shadowDesc.SampleDesc.Count = 1;
-		shadowDesc.SampleDesc.Quality = 0;
-		shadowDesc.Usage = D3D11_USAGE_DEFAULT;
-		Microsoft::WRL::ComPtr<ID3D11Texture2D> shadowTexture;
-		device->CreateTexture2D(&shadowDesc, 0, shadowTexture.GetAddressOf());
+		// Sampler state used for any and all post-processing
+		D3D11_SAMPLER_DESC ppSampDesc = {};
+		ppSampDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+		ppSampDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+		ppSampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+		ppSampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		ppSampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+		device->CreateSamplerState(&ppSampDesc, postProcessSampler.GetAddressOf());
 
-		// Create the depth/stencil view
-		D3D11_DEPTH_STENCIL_VIEW_DESC shadowDSDesc = {};
-		shadowDSDesc.Format = DXGI_FORMAT_D32_FLOAT;
-		shadowDSDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-		shadowDSDesc.Texture2D.MipSlice = 0;
-		device->CreateDepthStencilView(
-			shadowTexture.Get(),
-			&shadowDSDesc,
-			shadowDSV.GetAddressOf());
-
-		// Create the SRV for the shadow map
-		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
-		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = 1;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		device->CreateShaderResourceView(
-			shadowTexture.Get(),
-			&srvDesc,
-			shadowSRV.GetAddressOf());
-
-		// Create the depth-biased rasterizer to use in shadow mapping
-		D3D11_RASTERIZER_DESC shadowRastDesc = {};
-		shadowRastDesc.FillMode = D3D11_FILL_SOLID;
-		shadowRastDesc.CullMode = D3D11_CULL_BACK;
-		shadowRastDesc.DepthClipEnable = true;
-		shadowRastDesc.DepthBias = 1000; // Min. precision units, not world units!
-		shadowRastDesc.SlopeScaledDepthBias = 1.0f; // Bias more based on slope
-		device->CreateRasterizerState(&shadowRastDesc, &shadowRasterizer);
-
-		// Create the Percentage-Close Filtering sampler to use in shadow mapping
-		D3D11_SAMPLER_DESC shadowSampDesc = {};
-		shadowSampDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
-		shadowSampDesc.ComparisonFunc = D3D11_COMPARISON_LESS;
-		shadowSampDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
-		shadowSampDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
-		shadowSampDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
-		shadowSampDesc.BorderColor[0] = 1.0f; // Only need the first component
-		device->CreateSamplerState(&shadowSampDesc, &shadowSampler);
-	}
-
-	{
-		XMFLOAT3 lightDirection = allLights[0]->Direction;
-		XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookToLH(
-			XMLoadFloat3(&lightDirection) * -lightDisplacement,
-			XMLoadFloat3(&lightDirection),
-			XMVectorSet(0, 1, 0, 0)));
-
-		float lightProjectionSize = 15.0f; // Tweak for your scene!
-		XMStoreFloat4x4(&lightProjectionMatrix, XMMatrixOrthographicLH(
-			lightProjectionSize,
-			lightProjectionSize,
-			1.0f,
-			100.0f
-		));
-
+		RenderTargetInit();
 	}
 
 	// Initialize ImGui itself & platform/renderer backends
@@ -226,6 +168,116 @@ void Game::Init()
 	//ImGui::StyleColorsLight();
 	//ImGui::StyleColorsClassic();
 
+}
+
+// Helper method to hold shadow initializing
+void Game::ShadowInit() {
+	// Create the actual texture that will be the shadow map
+	D3D11_TEXTURE2D_DESC shadowDesc = {};
+	shadowDesc.Width = shadowMapResolution; // Ideally a power of 2 (like 1024)
+	shadowDesc.Height = shadowMapResolution; // Ideally a power of 2 (like 1024)
+	shadowDesc.ArraySize = 1;
+	shadowDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+	shadowDesc.CPUAccessFlags = 0;
+	shadowDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	shadowDesc.MipLevels = 1;
+	shadowDesc.MiscFlags = 0;
+	shadowDesc.SampleDesc.Count = 1;
+	shadowDesc.SampleDesc.Quality = 0;
+	shadowDesc.Usage = D3D11_USAGE_DEFAULT;
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> shadowTexture;
+	device->CreateTexture2D(&shadowDesc, 0, shadowTexture.GetAddressOf());
+
+	// Create the depth/stencil view
+	D3D11_DEPTH_STENCIL_VIEW_DESC shadowDSDesc = {};
+	shadowDSDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	shadowDSDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	shadowDSDesc.Texture2D.MipSlice = 0;
+	device->CreateDepthStencilView(
+		shadowTexture.Get(),
+		&shadowDSDesc,
+		shadowDSV.GetAddressOf());
+
+	// Create the SRV for the shadow map
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = 1;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	device->CreateShaderResourceView(
+		shadowTexture.Get(),
+		&srvDesc,
+		shadowSRV.GetAddressOf());
+
+	// Create the depth-biased rasterizer to use in shadow mapping
+	D3D11_RASTERIZER_DESC shadowRastDesc = {};
+	shadowRastDesc.FillMode = D3D11_FILL_SOLID;
+	shadowRastDesc.CullMode = D3D11_CULL_BACK;
+	shadowRastDesc.DepthClipEnable = true;
+	shadowRastDesc.DepthBias = 1000; // Min. precision units, not world units!
+	shadowRastDesc.SlopeScaledDepthBias = 1.0f; // Bias more based on slope
+	device->CreateRasterizerState(&shadowRastDesc, &shadowRasterizer);
+
+	// Create the Percentage-Close Filtering sampler to use in shadow mapping
+	D3D11_SAMPLER_DESC shadowSampDesc = {};
+	shadowSampDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+	shadowSampDesc.ComparisonFunc = D3D11_COMPARISON_LESS;
+	shadowSampDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+	shadowSampDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+	shadowSampDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+	shadowSampDesc.BorderColor[0] = 1.0f; // Only need the first component
+	device->CreateSamplerState(&shadowSampDesc, &shadowSampler);
+
+	// Initialize light matrices
+	XMFLOAT3 lightDirection = allLights[0]->Direction;
+	XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookToLH(
+		XMLoadFloat3(&lightDirection) * -lightDisplacement,
+		XMLoadFloat3(&lightDirection),
+		XMVectorSet(0, 1, 0, 0)));
+
+	float lightProjectionSize = 15.0f; // Tweak for your scene!
+	XMStoreFloat4x4(&lightProjectionMatrix, XMMatrixOrthographicLH(
+		lightProjectionSize,
+		lightProjectionSize,
+		1.0f,
+		100.0f
+	));
+}
+
+void Game::RenderTargetInit() {
+	// Describe the texture used as our second render target
+	D3D11_TEXTURE2D_DESC rtTextureDesc = {};
+	rtTextureDesc.Width = windowWidth;
+	rtTextureDesc.Height = windowHeight;
+	rtTextureDesc.ArraySize = 1;
+	rtTextureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+	rtTextureDesc.CPUAccessFlags = 0;
+	rtTextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	rtTextureDesc.MipLevels = 1;
+	rtTextureDesc.MiscFlags = 0;
+	rtTextureDesc.SampleDesc.Count = 1;
+	rtTextureDesc.SampleDesc.Quality = 0;
+	rtTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+	// Create the resource (no need to track it after the views are created below)
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> rtTexture;
+	device->CreateTexture2D(&rtTextureDesc, 0, rtTexture.GetAddressOf());
+
+	// Create our new Render Target View
+	D3D11_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.Format = rtTextureDesc.Format;
+	rtvDesc.Texture2D.MipSlice = 0;
+	rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+	device->CreateRenderTargetView(
+		rtTexture.Get(),
+		&rtvDesc,
+		renderRTV.ReleaseAndGetAddressOf());
+	// Create the Shader Resource View
+	// By passing it a null description for the SRV, we
+	// get a "default" SRV that has access to the entire resource
+	device->CreateShaderResourceView(
+		rtTexture.Get(),
+		0,
+		renderSRV.ReleaseAndGetAddressOf());
 }
 
 // --------------------------------------------------------
@@ -241,6 +293,9 @@ void Game::LoadShaders()
 	vertexShader_NormalMap = std::make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader_NormalMap.cso").c_str());
 	pixelShader_NormalMap = std::make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader_NormalMap.cso").c_str());
 	vertexShader_ShadowMap = std::make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader_ShadowMap.cso").c_str());
+	vertexShader_Fullscreen = std::make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader_Fullscreen.cso").c_str());
+	pixelShader_Blur = std::make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader_Blur.cso").c_str());
+
 
 
 	// Below variables are only used in the specialPixelShader
@@ -414,6 +469,10 @@ void Game::OnResize()
 	for (unsigned int i = 0; i < cameras.size(); i++) {
 		cameras[i]->UpdateProjectionMatrix((float)this->windowWidth / this->windowHeight);
 	}
+	
+	renderRTV.Reset();
+	renderSRV.Reset();
+	RenderTargetInit();
 }
 
 // --------------------------------------------------------
@@ -440,13 +499,14 @@ void Game::Update(float deltaTime, float totalTime)
 // --------------------------------------------------------
 void Game::Draw(float deltaTime, float totalTime)
 {
-	// Frame START
+	// ==================== PRE-RENDERING ====================
 	// - These things should happen ONCE PER FRAME
 	// - At the beginning of Game::Draw() before drawing *anything*
 	{
 		// Clear the back buffer (erases what's on the screen)
 		const float bgColor[4] = { 0.4f, 0.6f, 0.75f, 1.0f }; // Cornflower Blue
 		context->ClearRenderTargetView(backBufferRTV.Get(), bgColor);
+		context->ClearRenderTargetView(renderRTV.Get(), bgColor); // clear additional render target as well
 
 		// Clear the depth buffer (resets per-pixel occlusion information)
 		context->ClearDepthStencilView(depthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
@@ -455,6 +515,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		context->ClearDepthStencilView(shadowDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
 	
+	// ==================== RENDERING ====================
 	// Shadow map creation
 	{
 		// Set shadow map DSV (w/ no back buffer) as current depth buffer
@@ -495,7 +556,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		context->RSSetState(0);
 		context->OMSetRenderTargets(
 			1,
-			backBufferRTV.GetAddressOf(),
+			renderRTV.GetAddressOf(),
 			depthBufferDSV.Get());
 	}
 
@@ -542,9 +603,28 @@ void Game::Draw(float deltaTime, float totalTime)
 	
 	skybox->Draw(cameras[cameraIndex]);
 
-	// Frame END
+	// ==================== POST-RENDERING ====================
 	// - These should happen exactly ONCE PER FRAME
 	// - At the very end of the frame (after drawing *everything*)
+	{
+		// Doing our post-processing effect
+		context->OMSetRenderTargets(
+			1,
+			backBufferRTV.GetAddressOf(),
+			0);
+
+		vertexShader_Fullscreen->SetShader();
+		pixelShader_Blur->SetShader();
+		pixelShader_Blur->SetShaderResourceView("Screen", renderSRV.Get());
+		pixelShader_Blur->SetSamplerState("ClampSampler", postProcessSampler.Get());
+		pixelShader_Blur->SetInt("blurRadius", blurRadius);
+		pixelShader_Blur->SetFloat("pixelWidth", 1.0f / windowWidth);
+		pixelShader_Blur->SetFloat("pixelHeight", 1.0f / windowHeight);
+		pixelShader_Blur->CopyAllBufferData();
+
+		context->Draw(3, 0); // Just drawing 3 vertices, the vertex shader does the rest
+
+	}
 	{
 		// Present the back buffer to the user
 		//  - Puts the results of what we've drawn onto the window
@@ -696,7 +776,14 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 	for (auto& light : activeLights) {
 		lightsToRender.push_back(*light.second);
 	}
-	ImGui::Image(shadowSRV.Get(), ImVec2((float)shadowMapResolution, (float)shadowMapResolution));
+	// Post Processing GUI
+	if (ImGui::CollapsingHeader("Post Processing")) {
+		ImGui::SliderInt("Blurriness", &blurRadius, 0, 12);
+	}
+	// Shadow Map GUI
+	if (ImGui::CollapsingHeader("Shadow Map")) {
+		ImGui::Image(shadowSRV.Get(), ImVec2((float)shadowMapResolution, (float)shadowMapResolution));
+	}
 
 	ImGui::End();
 }

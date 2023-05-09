@@ -36,6 +36,8 @@ private:
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
 	void LoadShaders(); 
 	void CreateGeometry();
+	void ShadowInit();
+	void RenderTargetInit();
 
 	// Buffers to hold actual geometry data
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
@@ -48,6 +50,9 @@ private:
 	std::shared_ptr<SimpleVertexShader> vertexShader_NormalMap;
 	std::shared_ptr<SimplePixelShader> pixelShader_NormalMap;
 	std::shared_ptr<SimpleVertexShader> vertexShader_ShadowMap;
+	std::shared_ptr<SimpleVertexShader> vertexShader_Fullscreen;
+	std::shared_ptr<SimplePixelShader> pixelShader_Blur;
+
 	std::vector<int> specialShaderFuncs;
 	std::vector<float> specialShaderVars;
 
@@ -74,5 +79,11 @@ private:
 	float lightDisplacement; // These refer to our main directional light
 	DirectX::XMFLOAT4X4 lightViewMatrix;
 	DirectX::XMFLOAT4X4 lightProjectionMatrix;
+
+	// Post-processing variables
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> postProcessSampler;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderRTV; // as opposed to the post-render RTV (our normal back buffer)
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> renderSRV;
+	int blurRadius;
 };
 
