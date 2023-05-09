@@ -10,14 +10,31 @@ cbuffer ExternalData : register(b0) {
 }
 
 Texture2D AlbedoTexture		: register(t0);	// "t" registers for textures
-Texture2D RoughnessMap		: register(t1);	// "t" registers for textures
+Texture2D RoughnessMap		: register(t1);
 Texture2D NormalMap			: register(t2);
 Texture2D MetalnessMap		: register(t3);
+Texture2D ShadowMap			: register(t4);
 SamplerState BasicSampler	: register(s0);	// "s" registers for samplers
+SamplerComparisonState ShadowSampler : register(s1);
 
 
 float4 main(VertexToPixel_NormalMap input) : SV_TARGET
 {
+	// ========== SHADOW MAPPING CODE ==========
+	// Perform the perspective divide (divide by W) ourselves as the rasterizer will not do it automatically
+	input.shadowMapPos /= input.shadowMapPos.w;
+	// Convert the normalized device coordinates to UVs for sampling
+	float2 shadowUV = input.shadowMapPos.xy * 0.5f + 0.5f;
+	shadowUV.y = 1 - shadowUV.y; // Flip the Y since UVs have an opposite Y axis
+	
+	float distToLight = input.shadowMapPos.z; // Distance from the light to this surface
+	// Get a ratio of comparison results using SampleCmpLevelZero()
+	float shadowAmount = ShadowMap.SampleCmpLevelZero(
+		ShadowSampler,
+		shadowUV,
+		distToLight).r;
+	
+	// ========== NON-SHADOW CODE ==========
 	// Normal map code
 	float3 textureNormal = NormalMap.Sample(BasicSampler, input.uv).rgb * 2 - 1;
 	textureNormal = normalize(textureNormal);
@@ -52,8 +69,15 @@ float4 main(VertexToPixel_NormalMap input) : SV_TARGET
 		float3 specular = MicrofacetBRDF(input.normal, directionToLight, viewVector, roughness, fresnelAt0, fresnel); // specular component for this pixel
 		diffuse = DiffuseEnergyConserve(diffuse, fresnel, metalness);
 
+		float3 lightColor = (diffuse * albedo + specular) * lights[i].intensity * lights[i].color;
 
-		totalColor += (diffuse * albedo + specular) * lights[i].intensity * lights[i].color;
+		// Shadow the light results only from the main directional light
+		if (i == 0)
+		{
+			lightColor *= shadowAmount;
+		}
+
+		totalColor += lightColor;
 	}
 
 	// Gamma correcting and returning

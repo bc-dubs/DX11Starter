@@ -162,6 +162,9 @@
     <FxCompile Include="PixelShader_Sky.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="VertexShader_ShadowMap.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderIncludes.hlsli">

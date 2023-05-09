@@ -47,6 +47,7 @@ private:
 	std::shared_ptr<SimpleVertexShader> vertexShader;
 	std::shared_ptr<SimpleVertexShader> vertexShader_NormalMap;
 	std::shared_ptr<SimplePixelShader> pixelShader_NormalMap;
+	std::shared_ptr<SimpleVertexShader> vertexShader_ShadowMap;
 	std::vector<int> specialShaderFuncs;
 	std::vector<float> specialShaderVars;
 
@@ -67,6 +68,8 @@ private:
 	// Shadow mapping variables
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> shadowDSV;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shadowSRV;
+	Microsoft::WRL::ComPtr<ID3D11RasterizerState> shadowRasterizer;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> shadowSampler;
 	int shadowMapResolution;
 	float lightDisplacement; // These refer to our main directional light
 	DirectX::XMFLOAT4X4 lightViewMatrix;

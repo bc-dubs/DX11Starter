@@ -5,6 +5,8 @@ cbuffer ExternalData : register(b0) {
 	matrix worldInvTranspose;
 	matrix view;
 	matrix projection;
+	matrix lightView;
+	matrix lightProjection;
 }
 
 // --------------------------------------------------------
@@ -20,6 +22,10 @@ VertexToPixel_NormalMap main(VertexShaderInput input)
 	// Each of these components is then automatically divided by the W component (1.0 for now)
 	matrix wvp = mul(projection, mul(view, world));
 	output.screenPosition = mul(wvp, float4(input.localPosition, 1.0f));
+
+	// Calculating which pixel of the shadow map corresponds to this vertex. Z value will be the distance from the light
+	matrix shadowWVP = mul(lightProjection, mul(lightView, world));
+	output.shadowMapPos = mul(shadowWVP, float4(input.localPosition, 1.0f));
 
 	// Transform the normal in the same way this vertex was transformed
 	output.normal = mul((float3x3)worldInvTranspose, input.normal); // Why does this work again???

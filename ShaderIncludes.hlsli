@@ -30,6 +30,7 @@ struct VertexToPixel
 struct VertexToPixel_NormalMap
 {
 	float4 screenPosition	: SV_POSITION;	// XYZW position (System Value Position)
+	float4 shadowMapPos		: SHADOW_POSITION; // XYZW position of this pixel in the shadow map
 	float3 normal			: NORMAL;		// Surface normal
 	float3 tangent			: TANGENT;		// Surface tangent
 	float3 worldPosition	: POSITION;		// Position in world space
