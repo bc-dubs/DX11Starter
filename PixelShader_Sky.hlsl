@@ -26,9 +26,11 @@ PS_Output main(VertexToPixel_Sky input)
 	float sunOverlap = 0;
 
 	if (lights[0].type == LIGHT_TYPE_DIRECTIONAL) {
-		sunOverlap = clamp(dot(lights[0].direction, -input.sampleDir), 0, 1);
-	}
-
-	output.sun = sunOverlap * SkyTexture.Sample(SkySampler, input.sampleDir);
+        sunOverlap = pow(clamp(dot(lights[0].direction, -normalize(input.sampleDir)), 0, 1), 100);
+    }
+	
+	float4 sunAdjustment = sunOverlap * SkyTexture.Sample(SkySampler, input.sampleDir);
+    output.sun = float4(sunAdjustment.xyz, 1);
+    //output.sun = float4(normalize(input.sampleDir.xyz), 1.0f);
 	return output;
 }

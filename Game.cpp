@@ -329,6 +329,7 @@ void Game::LoadShaders()
 	vertexShader_ShadowMap = std::make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader_ShadowMap.cso").c_str());
 	vertexShader_Fullscreen = std::make_shared<SimpleVertexShader>(device, context, FixPath(L"VertexShader_Fullscreen.cso").c_str());
 	pixelShader_Blur = std::make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader_Blur.cso").c_str());
+	pixelShader_VolumetricLighting = std::make_shared<SimplePixelShader>(device, context, FixPath(L"PixelShader_VolumetricLighting.cso").c_str());
 
 
 
@@ -525,6 +526,23 @@ void Game::Update(float deltaTime, float totalTime)
 
 	cameras[cameraIndex]->Update(deltaTime);
 
+	// Redoing sky shader code in C++
+	XMFLOAT4X4 untranslatedView;
+	XMFLOAT4X4 viewMatrix = cameras[cameraIndex]->GetViewMatrix();
+	XMFLOAT4X4 projectionMatrix = cameras[cameraIndex]->GetProjectionMatrix();
+	XMStoreFloat4x4(&untranslatedView, XMLoadFloat4x4(&viewMatrix));
+	untranslatedView._14 = 0;
+	untranslatedView._24 = 0;
+	untranslatedView._34 = 0;
+
+	XMFLOAT4X4 viewProject;
+	XMFLOAT4X4 sunPositionAsMatrix;
+	XMFLOAT4 sunDirection = XMFLOAT4(-lightsToRender[0].Direction.x, -lightsToRender[0].Direction.y, -lightsToRender[0].Direction.z, 1.0);
+	XMStoreFloat4x4(&viewProject, XMMatrixMultiply(XMLoadFloat4x4(&projectionMatrix), XMLoadFloat4x4(&untranslatedView)));
+	XMStoreFloat4x4(&sunPositionAsMatrix, XMMatrixMultiply(XMLoadFloat4x4(&viewProject), XMMatrixTranslationFromVector(XMLoadFloat4(&sunDirection))));
+	sunPosition = XMFLOAT4(sunPositionAsMatrix._14, sunPositionAsMatrix._24, sunPositionAsMatrix._34, 1);
+
+
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::GetInstance().KeyDown(VK_ESCAPE))
 		Quit();
@@ -662,13 +680,16 @@ void Game::Draw(float deltaTime, float totalTime)
 			0);
 
 		vertexShader_Fullscreen->SetShader();
-		pixelShader_Blur->SetShader();
-		pixelShader_Blur->SetShaderResourceView("Screen", renderSRV.Get());
-		pixelShader_Blur->SetSamplerState("ClampSampler", postProcessSampler.Get());
-		pixelShader_Blur->SetInt("blurRadius", blurRadius);
-		pixelShader_Blur->SetFloat("pixelWidth", 1.0f / windowWidth);
-		pixelShader_Blur->SetFloat("pixelHeight", 1.0f / windowHeight);
-		pixelShader_Blur->CopyAllBufferData();
+		pixelShader_VolumetricLighting->SetShader();
+		pixelShader_VolumetricLighting->SetShaderResourceView("Screen", renderSRV.Get());
+		pixelShader_VolumetricLighting->SetShaderResourceView("SunAndOcclusion",sunAndOccludersSRV.Get());
+		pixelShader_VolumetricLighting->SetSamplerState("ClampSampler", postProcessSampler.Get());
+		pixelShader_VolumetricLighting->SetInt("numSamples", 20);
+		pixelShader_VolumetricLighting->SetFloat("exposure", 0.7f);
+		pixelShader_VolumetricLighting->SetFloat("weight", 0.5f);
+		pixelShader_VolumetricLighting->SetFloat("decay", 0.8f);
+		pixelShader_VolumetricLighting->SetFloat4("sunPosition", sunPosition);
+		pixelShader_VolumetricLighting->CopyAllBufferData();
 
 		context->Draw(3, 0); // Just drawing 3 vertices, the vertex shader does the rest
 

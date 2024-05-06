@@ -52,6 +52,7 @@ private:
 	std::shared_ptr<SimpleVertexShader> vertexShader_ShadowMap;
 	std::shared_ptr<SimpleVertexShader> vertexShader_Fullscreen;
 	std::shared_ptr<SimplePixelShader> pixelShader_Blur;
+	std::shared_ptr<SimplePixelShader> pixelShader_VolumetricLighting;
 
 	std::vector<int> specialShaderFuncs;
 	std::vector<float> specialShaderVars;
@@ -90,5 +91,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> sunAndOccludersTexture;
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> sunAndOccludersRTV; // as opposed to the post-render RTV (our normal back buffer)
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> sunAndOccludersSRV;
+	DirectX::XMFLOAT4 sunPosition;
 };
 
