@@ -1,1 +1,1 @@
-The option I chose is the simple box blur. It can be adjusted using a slider found under the "post processing" header in the ImGui menu
+I have attempted to implement multiple render targets and volumetric lighting. I believe there is some small error in the math as they are not displaying, but the code can be seen in the Volumetric Lighting pixel shader and the render targets can be viewed in ImGui. The "Sun" is shining from the camera's right.
