@@ -19,6 +19,8 @@ public:
 	~Sky();
 
 	void Draw(std::shared_ptr<Camera> camera);
+	std::shared_ptr<SimpleVertexShader> GetVertexShader();
+	std::shared_ptr<SimplePixelShader> GetPixelShader();
 
 	// Helper for creating a cubemap from 6 individual textures [Chris' Code]
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> CreateCubemap(

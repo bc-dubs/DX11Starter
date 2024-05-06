@@ -85,5 +85,10 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderRTV; // as opposed to the post-render RTV (our normal back buffer)
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> renderSRV;
 	int blurRadius;
+
+	// Volumetric Light Variables
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> sunAndOccludersTexture;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> sunAndOccludersRTV; // as opposed to the post-render RTV (our normal back buffer)
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> sunAndOccludersSRV;
 };
 

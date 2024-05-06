@@ -9,6 +9,13 @@ cbuffer ExternalData : register(b0) {
 	Light lights[MAX_LIGHTS];
 }
 
+struct PS_Output
+{
+	float4 color		: SV_TARGET0; // Render Target index 0
+	float4 occluders	: SV_TARGET1; // RT index 1
+};
+
+
 Texture2D AlbedoTexture		: register(t0);	// "t" registers for textures
 Texture2D RoughnessMap		: register(t1);
 Texture2D NormalMap			: register(t2);
@@ -18,8 +25,9 @@ SamplerState BasicSampler	: register(s0);	// "s" registers for samplers
 SamplerComparisonState ShadowSampler : register(s1);
 
 
-float4 main(VertexToPixel_NormalMap input) : SV_TARGET
+PS_Output main(VertexToPixel_NormalMap input)
 {
+	PS_Output output;
 	// ========== SHADOW MAPPING CODE ==========
 	// Perform the perspective divide (divide by W) ourselves as the rasterizer will not do it automatically
 	input.shadowMapPos /= input.shadowMapPos.w;
@@ -81,5 +89,7 @@ float4 main(VertexToPixel_NormalMap input) : SV_TARGET
 	}
 
 	// Gamma correcting and returning
-	return float4(pow(totalColor, 1 / 2.2f), 1);
+	output.color = float4(pow(totalColor, 1 / 2.2f), 1);
+	output.occluders = float4(0, 0, 0, 1);
+	return output;
 }

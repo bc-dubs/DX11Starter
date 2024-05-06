@@ -94,7 +94,7 @@ void Game::Init()
 	{
 		Light directionalLight = {};
 		directionalLight.Type = LIGHT_TYPE_DIRECTIONAL;
-		directionalLight.Direction = XMFLOAT3(-1, -1, 0.1f);
+		directionalLight.Direction = XMFLOAT3(-0.70534561585f, -0.70534561585f, 0.070534561585f);
 		directionalLight.Color = XMFLOAT3(1.0f, 0.3f, 0.3f);
 		directionalLight.Intensity = 1.0f;
 		allLights.push_back(make_shared<Light>(directionalLight));
@@ -278,6 +278,40 @@ void Game::RenderTargetInit() {
 		rtTexture.Get(),
 		0,
 		renderSRV.ReleaseAndGetAddressOf());
+
+	// Describe our MRT render target
+	D3D11_TEXTURE2D_DESC sunAndOccludersTextureDesc = {};
+	sunAndOccludersTextureDesc.Width = windowWidth;
+	sunAndOccludersTextureDesc.Height = windowHeight;
+	sunAndOccludersTextureDesc.ArraySize = 1;
+	sunAndOccludersTextureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+	sunAndOccludersTextureDesc.CPUAccessFlags = 0;
+	sunAndOccludersTextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	sunAndOccludersTextureDesc.MipLevels = 1;
+	sunAndOccludersTextureDesc.MiscFlags = 0;
+	sunAndOccludersTextureDesc.SampleDesc.Count = 1;
+	sunAndOccludersTextureDesc.SampleDesc.Quality = 0;
+	sunAndOccludersTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+	// Create the resource (no need to track it after the views are created below)
+	device->CreateTexture2D(&sunAndOccludersTextureDesc, 0, sunAndOccludersTexture.GetAddressOf());
+
+	// Create our MRT Render Target View
+	D3D11_RENDER_TARGET_VIEW_DESC sunAndOccludersRTVDesc = {};
+	sunAndOccludersRTVDesc.Format = sunAndOccludersTextureDesc.Format;
+	sunAndOccludersRTVDesc.Texture2D.MipSlice = 0;
+	sunAndOccludersRTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+	device->CreateRenderTargetView(
+		sunAndOccludersTexture.Get(),
+		&sunAndOccludersRTVDesc,
+		sunAndOccludersRTV.ReleaseAndGetAddressOf());
+	// Create the MRT Shader Resource View
+	// By passing it a null description for the SRV, we
+	// get a "default" SRV that has access to the entire resource
+	device->CreateShaderResourceView(
+		sunAndOccludersTexture.Get(),
+		0,
+		sunAndOccludersSRV.ReleaseAndGetAddressOf());
+
 }
 
 // --------------------------------------------------------
@@ -472,6 +506,8 @@ void Game::OnResize()
 	
 	renderRTV.Reset();
 	renderSRV.Reset();
+	sunAndOccludersRTV.Reset();
+	sunAndOccludersSRV.Reset();
 	RenderTargetInit();
 }
 
@@ -506,7 +542,8 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Clear the back buffer (erases what's on the screen)
 		const float bgColor[4] = { 0.4f, 0.6f, 0.75f, 1.0f }; // Cornflower Blue
 		context->ClearRenderTargetView(backBufferRTV.Get(), bgColor);
-		context->ClearRenderTargetView(renderRTV.Get(), bgColor); // clear additional render target as well
+		context->ClearRenderTargetView(renderRTV.Get(), bgColor);
+		context->ClearRenderTargetView(sunAndOccludersRTV.Get(), bgColor); // clear additional render targets as well
 
 		// Clear the depth buffer (resets per-pixel occlusion information)
 		context->ClearDepthStencilView(depthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
@@ -550,13 +587,17 @@ void Game::Draw(float deltaTime, float totalTime)
 		}
 
 		// Changing pipeline back to pre-shadow map state
+		ID3D11RenderTargetView* mainRenderTargets[2] = {};
+		mainRenderTargets[0] = renderRTV.Get();
+		mainRenderTargets[1] = sunAndOccludersRTV.Get();
+
 		viewport.Width = (float)this->windowWidth;
 		viewport.Height = (float)this->windowHeight;
 		context->RSSetViewports(1, &viewport);
 		context->RSSetState(0);
 		context->OMSetRenderTargets(
-			1,
-			renderRTV.GetAddressOf(),
+			2,
+			mainRenderTargets,
 			depthBufferDSV.Get());
 	}
 
@@ -600,9 +641,16 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		entity->GetMesh()->Draw(context);
 	}
-	
-	skybox->Draw(cameras[cameraIndex]);
+	// Skybox rendering
+	{
+		std::shared_ptr<SimplePixelShader> ps = skybox->GetPixelShader();
+		ps->SetFloat4("colorTint", XMFLOAT4(1, 1, 1, 1));
+		ps->SetFloat3("cameraPos", *cameras[cameraIndex]->GetTransform()->GetPosition());
+		ps->SetInt("numLights", (int)lightsToRender.size());
+		ps->SetData("lights", &lightsToRender[0], sizeof(Light)* (int)lightsToRender.size());
 
+		skybox->Draw(cameras[cameraIndex]);
+	}
 	// ==================== POST-RENDERING ====================
 	// - These should happen exactly ONCE PER FRAME
 	// - At the very end of the frame (after drawing *everything*)
@@ -781,8 +829,9 @@ void Game::UpdateImGui(float deltaTime, float totalTime)
 		ImGui::SliderInt("Blurriness", &blurRadius, 0, 12);
 	}
 	// Shadow Map GUI
-	if (ImGui::CollapsingHeader("Shadow Map")) {
+	if (ImGui::CollapsingHeader("Other Render Targes")) {
 		ImGui::Image(shadowSRV.Get(), ImVec2((float)shadowMapResolution, (float)shadowMapResolution));
+		ImGui::Image(sunAndOccludersSRV.Get(), ImVec2((float)windowWidth, (float)windowHeight));
 	}
 
 	ImGui::End();

@@ -60,6 +60,16 @@ void Sky::Draw(std::shared_ptr<Camera> camera)
 	context->OMSetDepthStencilState(nullptr, 0);
 }
 
+std::shared_ptr<SimpleVertexShader> Sky::GetVertexShader()
+{
+	return vertexShader;
+}
+
+std::shared_ptr<SimplePixelShader> Sky::GetPixelShader()
+{
+	return pixelShader;
+}
+
 // --------------------------------------------------------
 // Loads six individual textures (the six faces of a cube map), then
 // creates a blank cube map and copies each of the six textures to
